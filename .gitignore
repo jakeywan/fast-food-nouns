@@ -1,0 +1,18 @@
+node_modules
+parts.html
+
+#Hardhat files
+cache
+artifacts
+typechain/**
+.openzeppelin
+
+# Script output
+logs
+
+# Coverage result files
+coverage/
+coverage.json
+
+.env
+.DS_Store
