@@ -1,5 +1,10 @@
 # @nouns/contracts
 
+## About Descriptor version
+In this branch, we're essentially publishing a new descriptor contract and
+modifying it to point some at the live nouns one and some at our own. It's
+tricky, and requires publishing two contracts. The alternative is the base64 decode route.
+
 ## Basic Architecture
 
 We're deploying our own version of NounsToken with adjustments to convert the
