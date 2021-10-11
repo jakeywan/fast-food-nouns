@@ -32,7 +32,7 @@ module.exports = {
       }
     }
   },
-   etherscan: {
+  etherscan: {
     apiKey: process.env.ETHERSCAN_KEY
   }
 }

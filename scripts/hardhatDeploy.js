@@ -11,7 +11,8 @@ async function main() {
 
   const mint = await nounsToken.mint('1', {
     from: testAccounts[0],
-    value: '3000000000000000000'
+    gasPrice: 10000000000,
+    value: '30000000000000000'
   })
 
   console.log('Minted')

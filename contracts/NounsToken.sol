@@ -36,8 +36,8 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
     uint256 public max_tokens = 1000;
     uint256 public mint_limit= 20;
 
-    // Hat & opening SVG tag
-    string public hatSVG = '<rect width="160" height="10" transform="matrix(-1 0 0 1 240 80)" fill="#E11833"/><rect width="120" height="10" transform="matrix(-1 0 0 1 210 60)" fill="#E11833"/><rect width="100" height="10" transform="matrix(-1 0 0 1 200 50)" fill="#E11833"/><rect width="100" height="10" transform="matrix(-1 0 0 1 200 40)" fill="#E11833"/><rect width="130" height="10" transform="matrix(-1 0 0 1 210 70)" fill="#BD2D24"/><rect width="50" height="10" transform="matrix(-1 0 0 1 190 70)" fill="#EED811"/><rect width="10" height="10" transform="matrix(-1 0 0 1 150 60)" fill="#EED811"/><rect width="10" height="10" transform="matrix(-1 0 0 1 160 50)" fill="#EED811"/><rect width="10" height="10" transform="matrix(-1 0 0 1 170 60)" fill="#EED811"/><rect width="10" height="10" transform="matrix(-1 0 0 1 180 50)" fill="#EED811"/><rect width="10" height="10" transform="matrix(-1 0 0 1 190 60)" fill="#EED811"/>';
+    // Hat SVG elements
+    string public hatSVG = '<rect width="160" height="10" x="80" y="80" fill="#E11833"/><rect width="120" height="10" x="90" y="60" fill="#E11833"/><rect width="100" height="10" x="100" y="50" fill="#E11833"/><rect width="100" height="10" x="100" y="40" fill="#E11833"/><rect width="130" height="10" x="80" y="70" fill="#BD2D24"/><rect width="50" height="10" x="140" y="70" fill="#EED811"/><rect width="10" height="10" x="140" y="60" fill="#EED811"/><rect width="10" height="10" x="150" y="50" fill="#EED811"/><rect width="10" height="10" x="160" y="60" fill="#EED811"/><rect width="10" height="10" x="170" y="50" fill="#EED811"/><rect width="10" height="10" x="180" y="60" fill="#EED811"/>';
 
     // Store custom descriptions for GOOPs
     mapping (uint => string) public customDescription;
@@ -119,10 +119,12 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
 
     constructor() ERC721('Fast Food Nouns', 'FFN') {
         // MAINNET
-        descriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
-        seeder = INounsSeeder(0xCC8a0FB5ab3C7132c1b2A0109142Fb112c4Ce515);
+        // descriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
+        // seeder = INounsSeeder(0xCC8a0FB5ab3C7132c1b2A0109142Fb112c4Ce515);
+        // TODO: make this a deploy param, and add a function to allow updating
         // RINKEBY
-        // seeder = INounsSeeder(0xA98A1b1Cc4f5746A753167BAf8e0C26AcBe42F2E);
+        descriptor = INounsDescriptor(0x53cB482c73655D2287AE3282AD1395F82e6a402F);
+        seeder = INounsSeeder(0xA98A1b1Cc4f5746A753167BAf8e0C26AcBe42F2E);
 
         proxyRegistry = IProxyRegistry(0xa5409ec958C83C3f309868babACA7c86DCB077c1);
     }
@@ -195,16 +197,16 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
         string memory description = viewDescription(tokenId);
         // MODIFY THE SVG
         string memory SVG = descriptor.generateSVGImage(seeds[tokenId]);
-        // decode base64 SVG into bytes
+        // decode base64 SVG returned from Nouns contract into bytes
         bytes memory decodedSVG = Base64.decode(SVG);
         // remove the SVG closing tag `</svg>`
         string memory substring = removeLastSVGTag(decodedSVG);
-        // concatenate existing SVG (minus closing tag), hat, and closing tag
+        // concatenate retrieved SVG (minus closing tag), our hat, and new closing tag
         string memory finalSVG = string(abi.encodePacked(substring, hatSVG, '</svg>'));
-        // rencode 
+        // rencode SVG to base64
         string memory encodedFinalSVG = Base64.encode(bytes(finalSVG));
-        // compose json
-        string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "', name, '", "description": "', description, '", "image": "data:image/svg+xml;base64,', encodedFinalSVG, '"}'))));
+        // compose json string
+        string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', encodedFinalSVG, '"}'))));
         return string(abi.encodePacked('data:application/json;base64,', json));
     }
 
@@ -261,16 +263,11 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
 
     // Returns SVG string without the closing tag so we can insert more elements
     function removeLastSVGTag(bytes memory svgBytes) internal pure returns (string memory) {
-        bytes memory result = svgBytes;        
-        // NOTE: `result` remains the same length as `svgBytes`, but abi.encode
-        // seems to ignore the empty bytes at the end of result. so choosing this
-        // route over a for loop bc it seems more gas efficient.
-        delete result[result.length - 1];
-        delete result[result.length - 2];
-        delete result[result.length - 3];
-        delete result[result.length - 4];
-        delete result[result.length - 5];
-        delete result[result.length - 6];
+        // this will be length of svgBytes minus length of svg closing tag `</svg>`
+        bytes memory result = new bytes(svgBytes.length - 6);
+        for(uint i = 0; i < result.length; i++) {
+            result[i] = svgBytes[i];
+        }
         return string(result);
     }
 
