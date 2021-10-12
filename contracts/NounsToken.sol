@@ -45,9 +45,6 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
     // as `clothingState[0][4,9,14]`.
     mapping (uint256 => uint256[]) public clothingState;
 
-    // Store custom descriptions for fast food nouns
-    mapping (uint256 => string) public customDescription;
-
     // The Nouns token URI descriptor
     INounsDescriptor public descriptor;
 
@@ -92,35 +89,6 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
     modifier whenSeederNotLocked() {
         require(!isSeederLocked, 'Seeder is locked');
         _;
-    }
-
-    /**
-     * @notice Set a custom description for a Noun token on-chain that will display on OpenSea and other sites.
-     * Takes the format of "Noun [tokenId] is a [....]"
-     * May be modified at any time
-     * Send empty string to revert to default.
-     * @dev Only callable by the holder of the token.
-     */
-    function setCustomDescription (uint256 tokenId, string calldata _description) external returns (string memory){
-        require (msg.sender == ownerOf(tokenId), "not your Noun");
-        customDescription[tokenId] = _description;
-        string memory returnMessage = string(abi.encodePacked("Description set to: " , viewDescription(tokenId)));
-        return returnMessage;
-    }
-
-    function viewDescription (uint256 tokenId) public view returns (string memory){
-        string memory description = "";
-        string memory NounID = tokenId.toString();
-
-        if (bytes(customDescription[tokenId]).length != 0)
-        {
-            description = string(abi.encodePacked(description,'Noun ', NounID, ' is a ', customDescription[tokenId]));
-        }
-        else
-        {
-            description = string(abi.encodePacked(description,'Noun ', NounID, ' is a fast food worker.'));
-        }
-        return description;
     }
 
     // Specifies clothes owner would like to wear. Overwrites existing selections,
@@ -228,7 +196,7 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
         require(_exists(tokenId), 'NounsToken: URI query for nonexistent token');
         string memory NounID = tokenId.toString();
         string memory name = string(abi.encodePacked('Fast Food Noun ', NounID)); 
-        string memory description = viewDescription(tokenId);
+        string memory description = 'TODO: write description';
 
         // Fetch the original SVG (base64 encoded) from Nouns descriptor
         string memory SVG = descriptor.generateSVGImage(seeds[tokenId]);
