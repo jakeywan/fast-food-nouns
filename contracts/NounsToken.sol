@@ -51,12 +51,6 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
     // The Nouns token seeder
     INounsSeeder public seeder;
 
-    // Whether the descriptor can be updated
-    bool public isDescriptorLocked;
-
-    // Whether the seeder can be updated
-    bool public isSeederLocked;
-
     // The noun seeds
     mapping(uint256 => INounsSeeder.Seed) public seeds;
 
@@ -74,22 +68,6 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
     // Sale Status
     // TODO: set this to default false
     bool public sale_active = true;
-
-    /**
-     * @notice Require that the descriptor has not been locked.
-     */
-    modifier whenDescriptorNotLocked() {
-        require(!isDescriptorLocked, 'Descriptor is locked');
-        _;
-    }
-
-    /**
-     * @notice Require that the seeder has not been locked.
-     */
-    modifier whenSeederNotLocked() {
-        require(!isSeederLocked, 'Seeder is locked');
-        _;
-    }
 
     // Specifies clothes owner would like to wear. Overwrites existing selections,
     // so always include every items you'd like to wear.
@@ -223,42 +201,20 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
 
     /**
      * @notice Set the token URI descriptor.
-     * @dev Only callable by the owner when not locked.
      */
-    function setDescriptor(INounsDescriptor _descriptor) external override onlyOwner whenDescriptorNotLocked {
+    function setDescriptor(INounsDescriptor _descriptor) external override onlyOwner {
         descriptor = _descriptor;
 
         emit DescriptorUpdated(_descriptor);
     }
 
     /**
-     * @notice Lock the descriptor.
-     * @dev This cannot be reversed and is only callable by the owner when not locked.
-     */
-    function lockDescriptor() external override onlyOwner whenDescriptorNotLocked {
-        isDescriptorLocked = true;
-
-        emit DescriptorLocked();
-    }
-
-    /**
      * @notice Set the token seeder.
-     * @dev Only callable by the owner when not locked.
      */
-    function setSeeder(INounsSeeder _seeder) external override onlyOwner whenSeederNotLocked {
+    function setSeeder(INounsSeeder _seeder) external override onlyOwner {
         seeder = _seeder;
 
         emit SeederUpdated(_seeder);
-    }
-
-    /**
-     * @notice Lock the seeder.
-     * @dev This cannot be reversed and is only callable by the owner when not locked.
-     */
-    function lockSeeder() external override onlyOwner whenSeederNotLocked {
-        isSeederLocked = true;
-
-        emit SeederLocked();
     }
 
     /**
