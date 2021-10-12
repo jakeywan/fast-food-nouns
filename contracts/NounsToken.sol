@@ -38,6 +38,8 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
 
     address private devAddress;
 
+    string public tokenDescription = '"Can I take your order?" Fast Food Nouns work at the drive-thru, and spend all their hard earned cash on new clothes and bling.';
+
     string public hatSVG = '<rect width="160" height="10" x="80" y="80" fill="#E11833"/><rect width="120" height="10" x="90" y="60" fill="#E11833"/><rect width="100" height="10" x="100" y="50" fill="#E11833"/><rect width="100" height="10" x="100" y="40" fill="#E11833"/><rect width="130" height="10" x="80" y="70" fill="#BD2D24"/><rect width="50" height="10" x="140" y="70" fill="#EED811"/><rect width="10" height="10" x="140" y="60" fill="#EED811"/><rect width="10" height="10" x="150" y="50" fill="#EED811"/><rect width="10" height="10" x="160" y="60" fill="#EED811"/><rect width="10" height="10" x="170" y="50" fill="#EED811"/><rect width="10" height="10" x="180" y="60" fill="#EED811"/>';
 
     // An array of publicly available clothes (SVG snippets)
@@ -170,15 +172,22 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
         emit NounBurned(nounId);
     }
 
+    // Let owner update the description that appears for each Fast Food Noun
+    // so we can make it better if we need to.
+    function updateTokenDescription(string calldata newDescription) public onlyOwner returns (string memory) {
+        tokenDescription = newDescription;
+        return 'Description updated';
+    }
+
     /**
      * @notice Compose tokenURI for a Noun. Fetches original SVG, adds clothes.
      * @dev See {IERC721Metadata-tokenURI}.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), 'NounsToken: URI query for nonexistent token');
+        require(_exists(tokenId), 'nonexistent token');
         string memory NounID = tokenId.toString();
-        string memory name = string(abi.encodePacked('Fast Food Noun ', NounID)); 
-        string memory description = 'TODO: write description';
+        string memory name = string(abi.encodePacked('Fast Food Noun ', NounID));
+        string memory description = tokenDescription;
 
         // Fetch the original SVG (base64 encoded) from Nouns descriptor
         string memory SVG = descriptor.generateSVGImage(seeds[tokenId]);
