@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title The Nouns ERC-721 token
+/// @title The Fast Food Nouns ERC-721 token
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
- * ░░░░░░█████████░░█████████░░░ *
- * ░░░░░░██░░░████░░██░░░████░░░ *
- * ░░██████░░░████████░░░████░░░ *
- * ░░██░░██░░░████░░██░░░████░░░ *
- * ░░██░░██░░░████░░██░░░████░░░ *
- * ░░░░░░█████████░░█████████░░░ *
+ * ░░░░░░████████████░░░░░░░░░░░ *
+ * ░░░░░░██████░█░███░░░░░░░░░░░ *
+ * ░░░░███████░█░█░██████░░░░░░░ *
+ * ░░░████████░░░░░██████░░░░░░░ *
+ * ░░░████████████████████████░░ *
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
  *********************************/
@@ -29,7 +28,7 @@ import { Strings } from './Strings.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
-contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
+contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
     using Strings for uint256;
 
     uint256 public price = 30000000000000000;
