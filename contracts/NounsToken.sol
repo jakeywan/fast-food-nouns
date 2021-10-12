@@ -31,7 +31,7 @@ import 'hardhat/console.sol';
 contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
     using Strings for uint256;
 
-    uint256 public price = 30000000000000000;
+    uint256 public price = 20000000000000000; // .02 eth
     uint256 public max_tokens = 1000;
     uint256 public mint_limit= 20;
 
