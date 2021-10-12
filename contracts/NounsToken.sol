@@ -31,11 +31,9 @@ import 'hardhat/console.sol';
 contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
     using Strings for uint256;
 
-    uint256 public price = 20000000000000000; // .02 eth
+    uint256 public price = 30000000000000000; // .03 eth
     uint256 public max_tokens = 1000;
     uint256 public mint_limit= 20;
-
-    address private devAddress;
 
     string public tokenDescription = '"Can I take your order?" Fast Food Nouns work at the drive-thru, and spend all their hard earned cash on new clothes and bling.';
 
@@ -104,7 +102,6 @@ contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
         seeder = INounsSeeder(0xCC8a0FB5ab3C7132c1b2A0109142Fb112c4Ce515);
         proxyRegistry = IProxyRegistry(0xa5409ec958C83C3f309868babACA7c86DCB077c1);
 
-        devAddress = 0x97bB1eFC534fF3dC0DDF5fb83743605d5FAEcB27;
     }
 
     /**
@@ -112,7 +109,7 @@ contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
      */
     function withdrawAll() public {
         uint256 amount = address(this).balance;
-        require(payable(devAddress).send(amount));
+        require(payable(owner()).send(amount));
     }
 
     /**

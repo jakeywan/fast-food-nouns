@@ -1,10 +1,12 @@
 async function main() {
 
-  const NounsToken = await ethers.getContractFactory('NounsToken');
+  const NounsToken = await ethers.getContractFactory('FastFoodNouns');
   // Use the deployed descriptor address so NounsToken points to it
   const nounsToken = await NounsToken.deploy();
 
   console.log('NOUNSTOKEN DEPLOYED TO', nounsToken.address);
+
+  return; // FOR MAINNET, JUST STOP HERE
 
   // If we're deploying to mainnet, stop here
   if (process.env.HARDHAT_NETWORK !== 'rinkeby' && process.env.HARDHAT_NETWORK !== 'local') return;
