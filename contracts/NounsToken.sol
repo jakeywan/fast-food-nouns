@@ -98,14 +98,9 @@ contract NounsToken is INounsToken, Ownable, ERC721Enumerable {
         // Populate `clothingList` with fast food hat
         clothingList.push(hatSVG);
 
-        // MAINNET
-        // descriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
-        // seeder = INounsSeeder(0xCC8a0FB5ab3C7132c1b2A0109142Fb112c4Ce515);
-        // TODO: make this a deploy param
-        // RINKEBY
-        descriptor = INounsDescriptor(0x53cB482c73655D2287AE3282AD1395F82e6a402F);
-        seeder = INounsSeeder(0xA98A1b1Cc4f5746A753167BAf8e0C26AcBe42F2E);
-
+        // Mainnet addresses
+        descriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
+        seeder = INounsSeeder(0xCC8a0FB5ab3C7132c1b2A0109142Fb112c4Ce515);
         proxyRegistry = IProxyRegistry(0xa5409ec958C83C3f309868babACA7c86DCB077c1);
 
         devAddress = 0x97bB1eFC534fF3dC0DDF5fb83743605d5FAEcB27;
