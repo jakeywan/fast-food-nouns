@@ -35,7 +35,7 @@ contract FastFoodNouns is INounsToken, Ownable, ERC721Enumerable {
     uint256 public max_tokens = 1000;
     uint256 public mint_limit= 20;
 
-    string public tokenDescription = '"Can I take your order?" Fast Food Nouns work at the drive-thru, and spend all their hard earned cash on new clothes and bling.';
+    string public tokenDescription = 'Can I take your order? Fast Food Nouns work at the drive-thru, and spend all their hard earned cash on new clothes and bling.';
 
     string public hatSVG = '<rect width="160" height="10" x="80" y="80" fill="#E11833"/><rect width="120" height="10" x="90" y="60" fill="#E11833"/><rect width="100" height="10" x="100" y="50" fill="#E11833"/><rect width="100" height="10" x="100" y="40" fill="#E11833"/><rect width="130" height="10" x="80" y="70" fill="#BD2D24"/><rect width="50" height="10" x="140" y="70" fill="#EED811"/><rect width="10" height="10" x="140" y="60" fill="#EED811"/><rect width="10" height="10" x="150" y="50" fill="#EED811"/><rect width="10" height="10" x="160" y="60" fill="#EED811"/><rect width="10" height="10" x="170" y="50" fill="#EED811"/><rect width="10" height="10" x="180" y="60" fill="#EED811"/>';
 
