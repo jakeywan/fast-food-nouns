@@ -9,6 +9,11 @@ async function main() {
   // Execute a test mint
   const testAccounts = await ethers.provider.listAccounts()
 
+  const toggleSale = await nounsToken.toggleSale({
+    from: testAccounts[0]
+  })
+  console.log('Toggled sale active')
+
   const mint = await nounsToken.mint('1', {
     from: testAccounts[0],
     gasPrice: 10000000000,
