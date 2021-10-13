@@ -11,7 +11,7 @@
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
-    "verify-test": "npx hardhat verify --network rinkeby 0xdB986Ae8E1503527b61295aEadc6c80FB3e8b124"
+    "verify-test": "npx hardhat verify --network rinkeby 0x8741c92aDDeCc5C5e390a501a1658A385E128445"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -19,7 +19,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.1.0",
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
-    "base64-sol": "^1.0.1",
+    "base64-sol": "^1.1.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",
     "hardhat": "^2.6.0",
