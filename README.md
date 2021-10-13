@@ -1,32 +1,16 @@
-# @nouns/contracts
-
-## About Descriptor version
-In this branch, we're essentially publishing a new descriptor contract and
-modifying it to point some at the live nouns one and some at our own. It's
-tricky, and requires publishing two contracts. The alternative is the base64 decode route.
+# Fast Food Nouns Contract
+The official Fast Food Nouns contract.
 
 ## Basic Architecture
 
-We're deploying our own version of NounsToken with adjustments to convert the
-release mechanism and remove the DAO/auction functions.
+TLDR: in the tokenURI function, fetch the base64 encoded SVG for a given Fast Food
+Noun, modify it according to the user's clothing selections, and return it to the
+client.
 
-We're also releasing our own version of NounsDescriptor. HOWEVER, in order to avoid
-having to repopulate the Descriptor with asset parts from the encoded-files.json
-file, we're going to reference the live NounsDescriptor to pull in parts. PLUS
-the descriptor will add a function which will layer in our new hat. Then this will
-get sent out to the NFTDescriptor (which is live, we can use the same one from Nouns)
-to build and compose the SVG and give us back a uri.
-
-This means we'll need to encoded our hat image with RLE encoding. See link below
-for the script. This means that we'll have a:
-
-1. Custom NounsToken contract
-2. Custom NounsDescriptor contract (but with minimal modifications)
-
-The only other dependency is the NFTDescriptor, and we can use the live one for
-that.
+TODO: write up a more detailed explanation.
 
 
+## References
 ### Nouns Contracts
 https://github.com/nounsDAO/nouns-monorepo/blob/soli-nouns-sdk/packages/nouns-sdk/src/contract/addresses.ts#L16-L27
 
