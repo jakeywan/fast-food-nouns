@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title A custom Fast Food Nouns version of the Nouns NFT descriptor
+/// @title A custom Fast Food Nouns version of the Nouns descriptor
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -60,11 +60,10 @@ contract FFNDescriptor is Ownable {
     /**
      * @notice Update the underlying Noun descriptor (in case they change it).
      */
-    event DescriptorUpdated(INounsDescriptor descriptor);
-    function setDescriptor(INounsDescriptor _descriptor) external onlyOwner {
+    event NounDescriptorUpdated(INounsDescriptor descriptor);
+    function setNounDescriptor(INounsDescriptor _descriptor) external onlyOwner {
         nounDescriptor = _descriptor;
-
-        emit DescriptorUpdated(_descriptor);
+        emit NounDescriptorUpdated(_descriptor);
     }
 
     /**

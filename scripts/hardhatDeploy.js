@@ -35,7 +35,7 @@ async function main() {
       gasLimit: 250000
     })
     // Set the FFNDescriptor to point at the rinkeby Nouns descriptor
-    const setDescriptor = await ffnDescriptor.setDescriptor('0x53cB482c73655D2287AE3282AD1395F82e6a402F', {
+    const setDescriptor = await ffnDescriptor.setNounDescriptor('0x53cB482c73655D2287AE3282AD1395F82e6a402F', {
       from: testAccounts[0],
       gasLimit: 250000
     })
