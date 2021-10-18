@@ -1,15 +1,19 @@
 async function main() {
 
-  const NounsToken = await ethers.getContractFactory('FastFoodNouns');
+  const [deployer] = await ethers.getSigners();
+
+  console.log('Deploying contracts with the account:', deployer.address)
+
+  console.log('Account balance:', (await deployer.getBalance()).toString())
+
+  const NounsToken = await ethers.getContractFactory('FastFoodNouns')
   // Use the deployed descriptor address so NounsToken points to it
   const nounsToken = await NounsToken.deploy();
 
-  console.log('NOUNSTOKEN DEPLOYED TO', nounsToken.address);
-
-  return; // FOR MAINNET, JUST STOP HERE
+  console.log('NOUNSTOKEN DEPLOYED TO', nounsToken.address)
 
   // If we're deploying to mainnet, stop here
-  if (process.env.HARDHAT_NETWORK !== 'rinkeby' && process.env.HARDHAT_NETWORK !== 'local') return;
+  if (process.env.HARDHAT_NETWORK !== 'rinkeby' && process.env.HARDHAT_NETWORK !== 'local') return
 
   const testAccounts = await ethers.provider.listAccounts()
   console.log(testAccounts)
