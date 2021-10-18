@@ -98,6 +98,18 @@ async function main() {
   })
   console.log('Token uri for tokenId 0: ', tokenURI)
 
+  // Wear clothes.
+  // First set the Fast Food Nouns contract at our just-deployed test contract
+  // so when we check ownership it works
+  await ffnDescriptor.setFastFoodNouns(nounsToken.address) 
+  await ffnDescriptor.wearClothes('0', [0,2,3], [0], [3], [6], [9,12], [0], {
+    from: testAccounts[0]
+  })
+  console.log('Wearing clothes')
+
+  const isWearingClothing = await ffnDescriptor.getClothesForTokenId('0')
+  console.log('Is wearing clothing: ', isWearingClothing)
+
 }
 
 main()

@@ -19,6 +19,7 @@ pragma solidity ^0.8.6;
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
+import { INounsToken } from './interfaces/INounsToken.sol';
 import { INounsSeeder } from './interfaces/INounsSeeder.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
@@ -31,6 +32,9 @@ contract FFNDescriptor is Ownable {
     // our hat, and assemble into the base64 encoded tokenURI.
     // MAINNET
     INounsDescriptor public nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
+
+    // NounsToken.sol contract. Will be used to check ownership.
+    INounsToken public fastFoodNouns = INounsToken(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
 
     // prettier-ignore
     // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
@@ -58,16 +62,64 @@ contract FFNDescriptor is Ownable {
     bytes[] public customOverlays;
 
     // Clothing state for each FFN. Users can set multiple items in each class.
+    // uints in the array correspond to the index of the item from corresponding
+    // state (e.g. `customGlasses`)
     struct Wearing {
         uint256[] customBackgrounds;
         uint256[] customBodies;
         uint256[] customAccessories;
+        uint256[] customHats;
         uint256[] customGlasses;
         uint256[] customOverlays;
     }
 
-    // Tracks state of clothing per tokenId
-    mapping (uint256 => Wearing) public clothingState;
+    // Tracks state of clothing per tokenId. Array of `Wearing` structs.
+    Wearing[1000] private clothingState;
+
+    /**
+     * @notice Wear clothes
+     */
+    function wearClothes(
+      uint256 tokenId,
+      uint256[] memory _customBackgrounds,
+      uint256[] memory _customBodies,
+      uint256[] memory _customAccessories,
+      uint256[] memory _customHats,
+      uint256[] memory _customGlasses,
+      uint256[] memory _customOverlays
+    ) external {
+        require (msg.sender == fastFoodNouns.ownerOf(tokenId), "not your Noun");
+        clothingState[tokenId] = Wearing({
+          customBackgrounds: _customBackgrounds,
+          customBodies: _customBodies,
+          customAccessories: _customAccessories,
+          customHats: _customHats,
+          customGlasses: _customGlasses,
+          customOverlays: _customOverlays
+        });
+    }
+
+    /**
+     * @notice Return the list of clothes selected for a given tokenId
+     */
+    function getClothesForTokenId(uint256 tokenId) public view returns (
+      uint256[] memory,
+      uint256[] memory,
+      uint256[] memory,
+      uint256[] memory,
+      uint256[] memory,
+      uint256[] memory
+    ) {
+        return (
+          clothingState[tokenId].customBackgrounds,
+          clothingState[tokenId].customBodies,
+          clothingState[tokenId].customAccessories,
+          clothingState[tokenId].customHats,
+          clothingState[tokenId].customGlasses,
+          clothingState[tokenId].customOverlays
+        );
+
+    }
 
     /**
      * @notice Update the underlying Noun descriptor (in case they change it).
@@ -76,6 +128,13 @@ contract FFNDescriptor is Ownable {
     function setNounDescriptor(INounsDescriptor _descriptor) external onlyOwner {
         nounDescriptor = _descriptor;
         emit NounDescriptorUpdated(_descriptor);
+    }
+
+    /**
+     * @notice Set Fast Food Nouns contract address
+     */
+    function setFastFoodNouns(INounsToken _address) external onlyOwner {
+        fastFoodNouns = _address;
     }
 
     /**
