@@ -57,6 +57,18 @@ contract FFNDescriptor is Ownable {
     // Custom Overlay (RLE)
     bytes[] public customOverlays;
 
+    // Clothing state for each FFN. Users can set multiple items in each class.
+    struct Wearing {
+        uint256[] customBackgrounds;
+        uint256[] customBodies;
+        uint256[] customAccessories;
+        uint256[] customGlasses;
+        uint256[] customOverlays;
+    }
+
+    // Tracks state of clothing per tokenId
+    mapping (uint256 => Wearing) public clothingState;
+
     /**
      * @notice Update the underlying Noun descriptor (in case they change it).
      */
