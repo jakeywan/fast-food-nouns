@@ -70,6 +70,24 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
     // Noun Glasses (Custom RLE)
     bytes[] public override glasses;
 
+    // Custom Backgrounds (RLE)
+    bytes[] public customBackgrounds;
+
+    // Custom Bodies (RLE)
+    bytes[] public customBodies;
+
+    // Custom Accessories (RLE)
+    bytes[] public customAccessories;
+
+    // Custom Hats (RLE)
+    bytes[] public customHats;
+
+    // Custom Glasses (RLE)
+    bytes[] public customGlasses;
+
+    // Custom Overlay (RLE)
+    bytes[] public customOverlays;
+
     /**
      * @notice Require that the parts have not been locked.
      */
@@ -79,7 +97,7 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
     }
 
     /**
-     * @notice Update the Noun descriptor (in case they change it).
+     * @notice Update the underlying Noun descriptor (in case they change it).
      */
     event DescriptorUpdated(INounsDescriptor descriptor);
     function setDescriptor(INounsDescriptor _descriptor) external onlyOwner {
@@ -121,6 +139,48 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
      */
     function glassesCount() external view override returns (uint256) {
         return glasses.length;
+    }
+
+    /**
+     * @notice Get the number of available `customBackgrounds`.
+     */
+    function customBackgroundCount() external view returns (uint256) {
+        return customBackgrounds.length;
+    }
+
+    /**
+     * @notice Get the number of available `customBodies`.
+     */
+    function customBodyCount() external view returns (uint256) {
+        return customBodies.length;
+    }
+
+    /**
+     * @notice Get the number of available `customAccessories`.
+     */
+    function customAccessoryCount() external view returns (uint256) {
+        return customAccessories.length;
+    }
+
+    /**
+     * @notice Get the number of available `customHats`.
+     */
+    function customHatCount() external view returns (uint256) {
+        return customHats.length;
+    }
+
+    /**
+     * @notice Get the number of available `customGlasses`.
+     */
+    function customGlassesCount() external view returns (uint256) {
+        return customGlasses.length;
+    }
+
+    /**
+     * @notice Get the number of available `customOverlays`.
+     */
+    function customOverlayCount() external view returns (uint256) {
+        return customOverlays.length;
     }
 
     /**
@@ -185,6 +245,60 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
     }
 
     /**
+     * @notice Batch add custom backgrounds.
+     */
+    function addManyCustomBackgrounds(bytes[] calldata _backgrounds) external onlyOwner {
+        for (uint256 i = 0; i < _backgrounds.length; i++) {
+            _addCustomBackground(_backgrounds[i]);
+        }
+    }
+
+    /**
+     * @notice Batch add custom bodies.
+     */
+    function addManyCustomBodies(bytes[] calldata _bodies) external onlyOwner {
+        for (uint256 i = 0; i < _bodies.length; i++) {
+            _addCustomBody(_bodies[i]);
+        }
+    }
+
+    /**
+     * @notice Batch add custom accessories.
+     */
+    function addManyCustomAccessories(bytes[] calldata _accessories) external onlyOwner {
+        for (uint256 i = 0; i < _accessories.length; i++) {
+            _addCustomAccessory(_accessories[i]);
+        }
+    }
+
+    /**
+     * @notice Batch add custom hats.
+     */
+    function addManyCustomHats(bytes[] calldata _hats) external onlyOwner {
+        for (uint256 i = 0; i < _hats.length; i++) {
+            _addCustomHat(_hats[i]);
+        }
+    }
+
+    /**
+     * @notice Batch add custom glasses.
+     */
+    function addManyCustomGlasses(bytes[] calldata _glasses) external onlyOwner {
+        for (uint256 i = 0; i < _glasses.length; i++) {
+            _addCustomGlasses(_glasses[i]);
+        }
+    }
+
+    /**
+     * @notice Batch add custom overlays.
+     */
+    function addManyCustomOverlays(bytes[] calldata _overlays) external onlyOwner {
+        for (uint256 i = 0; i < _overlays.length; i++) {
+            _addCustomOverlay(_overlays[i]);
+        }
+    }
+
+    /**
      * @notice Add a single color to a color palette.
      * @dev This function can only be called by the owner.
      */
@@ -231,6 +345,48 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
      */
     function addGlasses(bytes calldata _glasses) external override onlyOwner whenPartsNotLocked {
         _addGlasses(_glasses);
+    }
+
+    /**
+     * @notice Add custom background.
+     */
+    function addCustomBackground(bytes calldata _background) external onlyOwner {
+        _addCustomBackground(_background);
+    }
+
+    /**
+     * @notice Add custom body.
+     */
+    function addCustomBody(bytes calldata _body) external onlyOwner {
+        _addCustomBody(_body);
+    }
+
+    /**
+     * @notice Add custom accessory.
+     */
+    function addCustomAccessory(bytes calldata _accessory) external onlyOwner {
+        _addCustomAccessory(_accessory);
+    }
+
+    /**
+     * @notice Add custom hat.
+     */
+    function addCustomHat(bytes calldata _hat) external onlyOwner {
+        _addCustomHat(_hat);
+    }
+
+    /**
+     * @notice Add custom hat.
+     */
+    function addCustomGlasses(bytes calldata _glasses) external onlyOwner {
+        _addCustomGlasses(_glasses);
+    }
+
+    /**
+     * @notice Add custom hat.
+     */
+    function addCustomOverlay(bytes calldata _overlay) external onlyOwner {
+        _addCustomOverlay(_overlay);
     }
 
     /**
@@ -362,7 +518,49 @@ contract FFNDescriptor is INounsDescriptor, Ownable {
     }
 
     /**
-     * @notice Get all Noun parts for the passed `seed`.
+     * @notice Add custom background.
+     */
+    function _addCustomBackground(bytes calldata _background) internal {
+        customBackgrounds.push(_background);
+    }
+
+    /**
+     * @notice Add custom body.
+     */
+    function _addCustomBody(bytes calldata _body) internal {
+        customBodies.push(_body);
+    }
+
+    /**
+     * @notice Add custom accessory.
+     */
+    function _addCustomAccessory(bytes calldata _accessory) internal {
+        customAccessories.push(_accessory);
+    }
+
+    /**
+     * @notice Add custom hat.
+     */
+    function _addCustomHat(bytes calldata _hat) internal {
+        customHats.push(_hat);
+    }
+
+    /**
+     * @notice Add custom glasses.
+     */
+    function _addCustomGlasses(bytes calldata _glasses) internal {
+        customGlasses.push(_glasses);
+    }
+
+    /**
+     * @notice Add custom overlay (miscellaneous, goes on top of everything).
+     */
+    function _addCustomOverlay(bytes calldata _overlay) internal {
+        customOverlays.push(_overlay);
+    }
+
+    /**
+     * @notice Get all Noun parts for the passed `seed` plus customizations.
      */
     function _getPartsForSeed(INounsSeeder.Seed memory seed) internal view returns (bytes[] memory) {
         bytes[] memory _parts = new bytes[](4);
