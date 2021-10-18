@@ -11,7 +11,7 @@
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
-    "verify-test": "npx hardhat verify --network rinkeby 0x3e1D9C4D84505C35d0B931A126D2ECc1a0530243"
+    "verify-test": "npx hardhat verify --network rinkeby 0x63131F3D86BcB91F7860923091E48E18bFf60812"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
