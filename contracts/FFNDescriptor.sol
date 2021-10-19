@@ -27,6 +27,49 @@ import 'hardhat/console.sol';
 contract FFNDescriptor is Ownable {
     using Strings for uint256;
 
+    // A mapping of seed values (concatenated into bytes) to tokenIds, so we can
+    // lookup tokenIds by seed
+    // TODO: check if it's cheaper to send these as strings or as
+    mapping(bytes32 => uint256) public tokenIdsBySeed;
+
+    /**
+     * @notice Update an individual bytes32 => tokenId mapping.
+     */
+    function updateTokenIdBySeed(INounsSeeder.Seed memory seed, uint256 tokenId) public onlyOwner {
+        bytes32 seedHash = keccak256(abi.encodePacked(
+            seed.background,
+            seed.body,
+            seed.accessory,
+            seed.head,
+            seed.glasses
+        ));
+        tokenIdsBySeed[seedHash] = tokenId;
+    }
+
+    /**
+     * @notice Batch upload all bytes32 => tokenId mappings.
+     */
+    function updateAllTokenIdsBySeed(INounsSeeder.Seed[] memory seedsArray) external onlyOwner {
+      for (uint256 i = 0; i < seedsArray.length; i++) {
+        updateTokenIdBySeed(seedsArray[i], i);
+      }
+    }
+
+    /**
+     * @notice Convert a Seed struct into a bytes32 hash for use in lookup table. 
+     */
+    function getTokenIdFromSeed(INounsSeeder.Seed memory _seed) view public returns (uint256) {
+        bytes32 seedHash = keccak256(abi.encodePacked(
+          _seed.background,
+          _seed.body,
+          _seed.accessory,
+          _seed.head,
+          _seed.glasses
+        ));
+        console.log(tokenIdsBySeed[seedHash]);
+        return tokenIdsBySeed[seedHash];
+    }
+
     // modified. the NounsDescriptor contract. For the main Nouns SVG parts, we're going
     // to fetch them directly from the live contract. Then we're going to insert
     // our hat, and assemble into the base64 encoded tokenURI.
@@ -42,6 +85,9 @@ contract FFNDescriptor is Ownable {
 
     // Noun Color Palettes (Index => Hex Colors)
     mapping(uint8 => string[]) public palettes;
+
+    // Null state RLE, which will sit at `0` index of each custom state below
+    bytes public nullRLE = '0x000000000000000000000000000000';
 
     // Custom Backgrounds (RLE)
     bytes[] public customBackgrounds;
@@ -63,39 +109,51 @@ contract FFNDescriptor is Ownable {
 
     // Clothing state for each FFN. Users can set multiple items in each class.
     // uints in the array correspond to the index of the item from corresponding
-    // state (e.g. `customGlasses`)
+    // state (e.g. `customGlasses`).
+    // IMPORTANT: `0` index here is a null state. It will reference an empty png
+    // RLE (`0x0000000000`). This way we avoid lots of additional rendering logic.
     struct Wearing {
-        uint256[] customBackgrounds;
-        uint256[] customBodies;
-        uint256[] customAccessories;
-        uint256[] customHats;
-        uint256[] customGlasses;
-        uint256[] customOverlays;
+        uint256 customBackground;
+        uint256 customBody;
+        uint256 customAccessory;
+        uint256 customHat;
+        uint256 customGlasses;
+        uint256 customOverlay;
     }
 
     // Tracks state of clothing per tokenId. Array of `Wearing` structs.
     Wearing[1000] private clothingState;
+
+    constructor() {
+        // Populate custom wearables with null state RLEs at `0` index
+        customBackgrounds.push(nullRLE);
+        customBodies.push(nullRLE);
+        customAccessories.push(nullRLE);
+        customHats.push(nullRLE);
+        customGlasses.push(nullRLE);
+        customOverlays.push(nullRLE);
+    }
 
     /**
      * @notice Wear clothes
      */
     function wearClothes(
       uint256 tokenId,
-      uint256[] memory _customBackgrounds,
-      uint256[] memory _customBodies,
-      uint256[] memory _customAccessories,
-      uint256[] memory _customHats,
-      uint256[] memory _customGlasses,
-      uint256[] memory _customOverlays
+      uint256 _customBackground,
+      uint256 _customBody,
+      uint256 _customAccessory,
+      uint256 _customHat,
+      uint256 _customGlasses,
+      uint256 _customOverlay
     ) external {
         require (msg.sender == fastFoodNouns.ownerOf(tokenId), "not your Noun");
         clothingState[tokenId] = Wearing({
-          customBackgrounds: _customBackgrounds,
-          customBodies: _customBodies,
-          customAccessories: _customAccessories,
-          customHats: _customHats,
+          customBackground: _customBackground,
+          customBody: _customBody,
+          customAccessory: _customAccessory,
+          customHat: _customHat,
           customGlasses: _customGlasses,
-          customOverlays: _customOverlays
+          customOverlay: _customOverlay
         });
     }
 
@@ -103,22 +161,21 @@ contract FFNDescriptor is Ownable {
      * @notice Return the list of clothes selected for a given tokenId
      */
     function getClothesForTokenId(uint256 tokenId) public view returns (
-      uint256[] memory,
-      uint256[] memory,
-      uint256[] memory,
-      uint256[] memory,
-      uint256[] memory,
-      uint256[] memory
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256
     ) {
         return (
-          clothingState[tokenId].customBackgrounds,
-          clothingState[tokenId].customBodies,
-          clothingState[tokenId].customAccessories,
-          clothingState[tokenId].customHats,
+          clothingState[tokenId].customBackground,
+          clothingState[tokenId].customBody,
+          clothingState[tokenId].customAccessory,
+          clothingState[tokenId].customHat,
           clothingState[tokenId].customGlasses,
-          clothingState[tokenId].customOverlays
+          clothingState[tokenId].customOverlay
         );
-
     }
 
     /**
@@ -311,7 +368,7 @@ contract FFNDescriptor is Ownable {
         string memory name = string(abi.encodePacked('Noun ', nounId));
         string memory description = string(abi.encodePacked('Noun ', nounId, ' is a member of the Nouns DAO'));
 
-        return genericDataURI(name, description, seed);
+        return genericDataURI(name, description, seed, tokenId);
     }
 
     /**
@@ -320,13 +377,14 @@ contract FFNDescriptor is Ownable {
     function genericDataURI(
         string memory name,
         string memory description,
-        INounsSeeder.Seed memory seed
+        INounsSeeder.Seed memory seed,
+        uint256 tokenId
     ) public view returns (string memory) {
         NFTDescriptor.TokenURIParams memory params = NFTDescriptor.TokenURIParams({
             name: name,
             description: description,
-            parts: _getPartsForSeed(seed),
-            // modified: point at live Nouns descriptor
+            parts: _getPartsForSeed(seed, tokenId),
+            // Must point at production Nouns descriptor, not our own
             background: nounDescriptor.backgrounds(seed.background)
         });
         return NFTDescriptor.constructTokenURI(params, palettes);
@@ -334,11 +392,14 @@ contract FFNDescriptor is Ownable {
 
     /**
      * @notice Given a seed, construct a base64 encoded SVG image.
+     * @dev The seed generates the base Noun (referencing the external descriptor),
+     * but the tokenId enables contruction of customizations via our own internal
+     * state.
      */
     function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
+        uint256 tokenId = getTokenIdFromSeed(seed);
         MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
-            parts: _getPartsForSeed(seed),
-            // modified
+            parts: _getPartsForSeed(seed, tokenId),
             background: nounDescriptor.backgrounds(seed.background)
         });
         return NFTDescriptor.generateSVGImage(params, palettes);
@@ -396,13 +457,24 @@ contract FFNDescriptor is Ownable {
     /**
      * @notice Get all Noun parts for the passed `seed` plus customizations.
      */
-    function _getPartsForSeed(INounsSeeder.Seed memory seed) internal view returns (bytes[] memory) {
-        bytes[] memory _parts = new bytes[](4);
-        // modified to fetch from nouns descriptor (not internal state)
-        _parts[0] = nounDescriptor.bodies(seed.body);
-        _parts[1] = nounDescriptor.accessories(seed.accessory);
-        _parts[2] = nounDescriptor.heads(seed.head);
-        _parts[3] = nounDescriptor.glasses(seed.glasses);
+    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
+        bytes[] memory _parts = new bytes[](10);
+        Wearing memory _wearing = clothingState[tokenId];
+        console.log('getting parts for seed');
+        // In order to know the length of `_parts` in advance, we use the `0`
+        // index to indicate an empty state (indicating an empty RLE). We need
+        // to know the length because we can't use `push` on in memory arrays.
+        _parts[0] = customBackgrounds[_wearing.customBackground];
+        _parts[1] = nounDescriptor.bodies(seed.body);
+        _parts[2] = customBodies[_wearing.customBody];
+        _parts[3] = nounDescriptor.accessories(seed.accessory);
+        _parts[4] = customAccessories[_wearing.customAccessory];
+        _parts[5] = nounDescriptor.heads(seed.head);
+        _parts[6] = customHats[_wearing.customHat];
+        _parts[7] = nounDescriptor.glasses(seed.glasses);
+        _parts[8] = customGlasses[_wearing.customGlasses];
+        _parts[9] = customOverlays[_wearing.customOverlay];
+
         return _parts;
     }
 }
