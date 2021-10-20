@@ -118,7 +118,7 @@ async function main() {
   // First set the Fast Food Nouns contract at our just-deployed test contract
   // so when we check tokenURI it works
   await ffnDescriptor.setFastFoodNouns(nounsToken.address)
-  await ffnDescriptor.wearClothes('0', 0, 0, 0, 0, 0, 0, 1, 1, 1, {
+  await ffnDescriptor.wearClothes('0', [0, 0, 0, 0, 0, 0, 1, 1, 1], {
     from: testAccounts[0]
   })
   console.log('Wearing clothes')

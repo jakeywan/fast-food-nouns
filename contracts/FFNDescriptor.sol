@@ -126,32 +126,11 @@ contract FFNDescriptor is Ownable {
     /**
      * @notice Wear clothes
      */
-    function wearClothes(
-      uint256 tokenId,
-      uint256 _customBackground,
-      uint256 _customBody,
-      uint256 _customAccessory,
-      uint256 _customHat,
-      uint256 _customGlasses,
-      uint256 _customOverlay,
-      uint256 _overrideBody,
-      uint256 _overrideAccessory,
-      uint256 _overrideGlasses
-    ) external {
+    function wearClothes(uint256 tokenId, Wearing calldata _wearing) external {
         // TODO: enable either the contract owner or token owner to do this.
         // this way we can turn the hat on for everyone?
         require (msg.sender == fastFoodNouns.ownerOf(tokenId), "not your Noun");
-        clothingState[tokenId] = Wearing({
-          customBackground: _customBackground,
-          customBody: _customBody,
-          customAccessory: _customAccessory,
-          customHat: _customHat,
-          customGlasses: _customGlasses,
-          customOverlay: _customOverlay,
-          overrideBody: _overrideBody,
-          overrideAccessory: _overrideAccessory,
-          overrideGlasses: _overrideGlasses
-        });
+        clothingState[tokenId] = _wearing;
     }
 
     /**
