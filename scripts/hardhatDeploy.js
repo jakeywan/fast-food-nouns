@@ -105,6 +105,14 @@ async function main() {
   //   gasLimit: 250000
   // })
   // console.log('tokenId 0 clothing: ', JSON.stringify(ourClothes))
+  const nullRLE = '0x0000000000'
+  const background = await ffnDescriptor.addCustomBackground(nullRLE)
+  const body = await ffnDescriptor.addCustomBody(nullRLE)
+  const hat = await ffnDescriptor.addCustomHat(nullRLE)
+  const accessory = await ffnDescriptor.addCustomAccessory(nullRLE)
+  const glasses = await ffnDescriptor.addCustomGlasses(nullRLE)
+  const overlay = await ffnDescriptor.addCustomOverlay(nullRLE)
+  console.log('Populated null states for custom items')
 
   // Fetch test tokenURI
   const tokenURI = await nounsToken.tokenURI(0, {

@@ -66,7 +66,6 @@ contract FFNDescriptor is Ownable {
           _seed.head,
           _seed.glasses
         ));
-        console.log(tokenIdsBySeed[seedHash]);
         return tokenIdsBySeed[seedHash];
     }
 
@@ -85,9 +84,6 @@ contract FFNDescriptor is Ownable {
 
     // Noun Color Palettes (Index => Hex Colors)
     mapping(uint8 => string[]) public palettes;
-
-    // Null state RLE, which will sit at `0` index of each custom state below
-    bytes public nullRLE = '0x000000000000000000000000000000';
 
     // Custom Backgrounds (RLE)
     bytes[] public customBackgrounds;
@@ -124,16 +120,6 @@ contract FFNDescriptor is Ownable {
     // Tracks state of clothing per tokenId. Array of `Wearing` structs.
     Wearing[1000] private clothingState;
 
-    constructor() {
-        // Populate custom wearables with null state RLEs at `0` index
-        customBackgrounds.push(nullRLE);
-        customBodies.push(nullRLE);
-        customAccessories.push(nullRLE);
-        customHats.push(nullRLE);
-        customGlasses.push(nullRLE);
-        customOverlays.push(nullRLE);
-    }
-
     /**
      * @notice Wear clothes
      */
@@ -146,6 +132,8 @@ contract FFNDescriptor is Ownable {
       uint256 _customGlasses,
       uint256 _customOverlay
     ) external {
+        // TODO: enable either the contract owner or token owner to do this.
+        // this way we can turn the hat on for everyone?
         require (msg.sender == fastFoodNouns.ownerOf(tokenId), "not your Noun");
         clothingState[tokenId] = Wearing({
           customBackground: _customBackground,
@@ -395,7 +383,7 @@ contract FFNDescriptor is Ownable {
      * @dev The seed generates the base Noun (referencing the external descriptor),
      * but the tokenId enables contruction of customizations via our own internal
      * state.
-     */
+     */ 
     function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
         uint256 tokenId = getTokenIdFromSeed(seed);
         MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
@@ -460,7 +448,10 @@ contract FFNDescriptor is Ownable {
     function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
         bytes[] memory _parts = new bytes[](10);
         Wearing memory _wearing = clothingState[tokenId];
-        console.log('getting parts for seed');
+        // TODO: Make it so we can select from the nounDescriptor for certain
+        // parts instead, either by using that as the value we return in custom
+        // or by subbing out the nounDescriptor part for something else (maybe
+        // we augment the Wearing struct for this?)
         // In order to know the length of `_parts` in advance, we use the `0`
         // index to indicate an empty state (indicating an empty RLE). We need
         // to know the length because we can't use `push` on in memory arrays.

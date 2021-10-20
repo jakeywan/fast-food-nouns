@@ -19,3 +19,8 @@ https://nouns.notion.site/Noun-Protocol-32e4f0bf74fe433e927e2ea35e52a507#f7d5796
 
 ### For RLE encoding svgs
 https://github.com/nounsDAO/nouns-monorepo/tree/soli-nouns-sdk/packages/nouns-assets
+
+
+## Notes
+* For our descriptor and clothing system, we should make it such that another project
+ entirely (like a future "mutants" or "babies" FFNs) could use our clothing system
