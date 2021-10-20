@@ -114,23 +114,24 @@ async function main() {
   const overlay = await ffnDescriptor.addCustomOverlay(nullRLE)
   console.log('Populated null states for custom items')
 
+  // Wear clothes.
+  // First set the Fast Food Nouns contract at our just-deployed test contract
+  // so when we check tokenURI it works
+  await ffnDescriptor.setFastFoodNouns(nounsToken.address)
+  await ffnDescriptor.wearClothes('0', 0, 0, 0, 0, 0, 0, 1, 1, 1, {
+    from: testAccounts[0]
+  })
+  console.log('Wearing clothes')
+
+  // Fetch clothes for this tokenId. Should correspond to the above.
+  const isWearingClothing = await ffnDescriptor.getClothesForTokenId('0')
+  console.log('Is wearing clothing: ', isWearingClothing)
+
   // Fetch test tokenURI
   const tokenURI = await nounsToken.tokenURI(0, {
     from: testAccounts[0]
   })
   console.log('Token uri for tokenId 0: ', tokenURI)
-
-  // Wear clothes.
-  // First set the Fast Food Nouns contract at our just-deployed test contract
-  // so when we check ownership it works
-  await ffnDescriptor.setFastFoodNouns(nounsToken.address)
-  await ffnDescriptor.wearClothes('0', 9, 72, 3, 9, 7, 9991, {
-    from: testAccounts[0]
-  })
-  console.log('Wearing clothes')
-
-  const isWearingClothing = await ffnDescriptor.getClothesForTokenId('0')
-  console.log('Is wearing clothing: ', isWearingClothing)
 
 }
 

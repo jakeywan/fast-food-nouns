@@ -115,6 +115,9 @@ contract FFNDescriptor is Ownable {
         uint256 customHat;
         uint256 customGlasses;
         uint256 customOverlay;
+        uint256 overrideBody;
+        uint256 overrideAccessory;
+        uint256 overrideGlasses;
     }
 
     // Tracks state of clothing per tokenId. Array of `Wearing` structs.
@@ -130,7 +133,10 @@ contract FFNDescriptor is Ownable {
       uint256 _customAccessory,
       uint256 _customHat,
       uint256 _customGlasses,
-      uint256 _customOverlay
+      uint256 _customOverlay,
+      uint256 _overrideBody,
+      uint256 _overrideAccessory,
+      uint256 _overrideGlasses
     ) external {
         // TODO: enable either the contract owner or token owner to do this.
         // this way we can turn the hat on for everyone?
@@ -141,29 +147,18 @@ contract FFNDescriptor is Ownable {
           customAccessory: _customAccessory,
           customHat: _customHat,
           customGlasses: _customGlasses,
-          customOverlay: _customOverlay
+          customOverlay: _customOverlay,
+          overrideBody: _overrideBody,
+          overrideAccessory: _overrideAccessory,
+          overrideGlasses: _overrideGlasses
         });
     }
 
     /**
      * @notice Return the list of clothes selected for a given tokenId
      */
-    function getClothesForTokenId(uint256 tokenId) public view returns (
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256
-    ) {
-        return (
-          clothingState[tokenId].customBackground,
-          clothingState[tokenId].customBody,
-          clothingState[tokenId].customAccessory,
-          clothingState[tokenId].customHat,
-          clothingState[tokenId].customGlasses,
-          clothingState[tokenId].customOverlay
-        );
+    function getClothesForTokenId(uint256 tokenId) public view returns (Wearing memory) {
+        return clothingState[tokenId];
     }
 
     /**
@@ -448,21 +443,24 @@ contract FFNDescriptor is Ownable {
     function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
         bytes[] memory _parts = new bytes[](10);
         Wearing memory _wearing = clothingState[tokenId];
-        // TODO: Make it so we can select from the nounDescriptor for certain
-        // parts instead, either by using that as the value we return in custom
-        // or by subbing out the nounDescriptor part for something else (maybe
-        // we augment the Wearing struct for this?)
         // In order to know the length of `_parts` in advance, we use the `0`
         // index to indicate an empty state (indicating an empty RLE). We need
         // to know the length because we can't use `push` on in memory arrays.
         _parts[0] = customBackgrounds[_wearing.customBackground];
-        _parts[1] = nounDescriptor.bodies(seed.body);
+        // We use `_wearing.overrideBody - 1` so we can assume that `0` is an
+        // empty state and still access the 0-indexed items on `nounDescriptor`.
+        // This means our front end must increase selected item by 1 (e.g. to
+        // select the 0-indexed body, send 1).
+        _parts[1] = _wearing.overrideBody > 0 ?
+            nounDescriptor.bodies(_wearing.overrideBody - 1) : nounDescriptor.bodies(seed.body);
         _parts[2] = customBodies[_wearing.customBody];
-        _parts[3] = nounDescriptor.accessories(seed.accessory);
+        _parts[3] = _wearing.overrideAccessory > 0 ?
+            nounDescriptor.accessories(_wearing.overrideAccessory - 1) : nounDescriptor.accessories(seed.accessory);
         _parts[4] = customAccessories[_wearing.customAccessory];
         _parts[5] = nounDescriptor.heads(seed.head);
         _parts[6] = customHats[_wearing.customHat];
-        _parts[7] = nounDescriptor.glasses(seed.glasses);
+        _parts[7] = _wearing.overrideGlasses > 0 ?
+            nounDescriptor.glasses(_wearing.overrideGlasses - 1) : nounDescriptor.glasses(seed.glasses);
         _parts[8] = customGlasses[_wearing.customGlasses];
         _parts[9] = customOverlays[_wearing.customOverlay];
 
