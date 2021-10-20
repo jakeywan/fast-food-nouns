@@ -357,7 +357,7 @@ contract FFNDescriptor is Ownable {
      * @dev The seed generates the base Noun (referencing the external descriptor),
      * but the tokenId enables contruction of customizations via our own internal
      * state.
-     */ 
+     */
     function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
         uint256 tokenId = getTokenIdFromSeed(seed);
         MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
@@ -365,6 +365,39 @@ contract FFNDescriptor is Ownable {
             background: nounDescriptor.backgrounds(seed.background)
         });
         return NFTDescriptor.generateSVGImage(params, palettes);
+    }
+
+    /**
+     * @notice Get all Noun parts for the passed `seed` plus customizations.
+     */
+    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
+        bytes[] memory _parts = new bytes[](10);
+        Wearing memory _wearing = clothingState[tokenId];
+        // In order to know the length of `_parts` in advance, we use the `0`
+        // index to indicate an empty state (indicating an empty RLE). We need
+        // to know the length because we can't use `push` on in memory arrays.
+        _parts[0] = customBackgrounds[_wearing.customBackground];
+        // We use `_wearing.overrideBody - 1` so we can assume that `0` is an
+        // empty state and still access the 0-indexed items on `nounDescriptor`.
+        // This means our front end must increase selected item by 1 (e.g. to
+        // select the 0-indexed body, send 1).
+        // NOTE: If users select a customGlasses, for example, should we hide
+        // the nounDescriptor glasses? like, one or the other? if so we should
+        // have a way to get just the head.
+        _parts[1] = _wearing.overrideBody > 0 ?
+            nounDescriptor.bodies(_wearing.overrideBody - 1) : nounDescriptor.bodies(seed.body);
+        _parts[2] = customBodies[_wearing.customBody];
+        _parts[3] = _wearing.overrideAccessory > 0 ?
+            nounDescriptor.accessories(_wearing.overrideAccessory - 1) : nounDescriptor.accessories(seed.accessory);
+        _parts[4] = customAccessories[_wearing.customAccessory];
+        _parts[5] = nounDescriptor.heads(seed.head);
+        _parts[6] = customHats[_wearing.customHat];
+        _parts[7] = _wearing.overrideGlasses > 0 ?
+            nounDescriptor.glasses(_wearing.overrideGlasses - 1) : nounDescriptor.glasses(seed.glasses);
+        _parts[8] = customGlasses[_wearing.customGlasses];
+        _parts[9] = customOverlays[_wearing.customOverlay];
+
+        return _parts;
     }
 
     /**
@@ -416,35 +449,6 @@ contract FFNDescriptor is Ownable {
         customOverlays.push(_overlay);
     }
 
-    /**
-     * @notice Get all Noun parts for the passed `seed` plus customizations.
-     */
-    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
-        bytes[] memory _parts = new bytes[](10);
-        Wearing memory _wearing = clothingState[tokenId];
-        // In order to know the length of `_parts` in advance, we use the `0`
-        // index to indicate an empty state (indicating an empty RLE). We need
-        // to know the length because we can't use `push` on in memory arrays.
-        _parts[0] = customBackgrounds[_wearing.customBackground];
-        // We use `_wearing.overrideBody - 1` so we can assume that `0` is an
-        // empty state and still access the 0-indexed items on `nounDescriptor`.
-        // This means our front end must increase selected item by 1 (e.g. to
-        // select the 0-indexed body, send 1).
-        _parts[1] = _wearing.overrideBody > 0 ?
-            nounDescriptor.bodies(_wearing.overrideBody - 1) : nounDescriptor.bodies(seed.body);
-        _parts[2] = customBodies[_wearing.customBody];
-        _parts[3] = _wearing.overrideAccessory > 0 ?
-            nounDescriptor.accessories(_wearing.overrideAccessory - 1) : nounDescriptor.accessories(seed.accessory);
-        _parts[4] = customAccessories[_wearing.customAccessory];
-        _parts[5] = nounDescriptor.heads(seed.head);
-        _parts[6] = customHats[_wearing.customHat];
-        _parts[7] = _wearing.overrideGlasses > 0 ?
-            nounDescriptor.glasses(_wearing.overrideGlasses - 1) : nounDescriptor.glasses(seed.glasses);
-        _parts[8] = customGlasses[_wearing.customGlasses];
-        _parts[9] = customOverlays[_wearing.customOverlay];
-
-        return _parts;
-    }
 }
 
 library MultiPartRLEToSVG {
