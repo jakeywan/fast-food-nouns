@@ -386,9 +386,14 @@ contract FFNDescriptor is Ownable {
         // have a way to get just the head.
         _parts[1] = _wearing.overrideBody > 0 ?
             nounDescriptor.bodies(_wearing.overrideBody - 1) : nounDescriptor.bodies(seed.body);
-        _parts[2] = _wearing.overrideAccessory > 0 ?
+        _parts[2] = customBodies[_wearing.customBody];
+        _parts[3] = _wearing.overrideAccessory > 0 ?
             nounDescriptor.accessories(_wearing.overrideAccessory - 1) : nounDescriptor.accessories(seed.accessory);
-        _parts[3] = customBodies[_wearing.customBody];
+        // do we need this? isn't this a shirt? Well, imagine a gold chain accessory.
+        // we really need the ability to remove the accessory and not have one if
+        // we need it to fit over the custom body. otherwise we're going to get the
+        // default accessory (which sometimes looks like a shirt pattern) over our
+        // custom shirts constantly
         _parts[4] = customAccessories[_wearing.customAccessory];
         _parts[5] = nounDescriptor.heads(seed.head);
         _parts[6] = customHats[_wearing.customHat];
