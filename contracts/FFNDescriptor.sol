@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title A custom Fast Food Nouns version of the Nouns descriptor
+/// @title Fast Food Nouns Descriptor Contract
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -34,6 +34,11 @@ contract FFNDescriptor is Ownable {
 
     /**
      * @notice Update an individual bytes32 => tokenId mapping.
+     * @dev While this structure makes it possible to have many seeds for the
+     * same tokenId (in case of erroneous updates), we can only have
+     * one of each seed. This means the worst case is that we have extra (erroneous
+     * but not used elsewhere) seeds for the same tokenId (that will never
+     * actually get invoked). So not worth deleting them.
      */
     function updateTokenIdBySeed(INounsSeeder.Seed memory seed, uint256 tokenId) public onlyOwner {
         bytes32 seedHash = keccak256(abi.encodePacked(
@@ -46,17 +51,19 @@ contract FFNDescriptor is Ownable {
         tokenIdsBySeed[seedHash] = tokenId;
     }
 
+    // TODO: This fails from a too-large input size. Let's make it possible to
+    // break this into chunks (doing 1-by-1 is also too much gas).
     /**
      * @notice Batch upload all bytes32 => tokenId mappings.
      */
-    function updateAllTokenIdsBySeed(INounsSeeder.Seed[] memory seedsArray) external onlyOwner {
-      for (uint256 i = 0; i < seedsArray.length; i++) {
+    function updateAllTokenIdsBySeed(INounsSeeder.Seed[] memory seedsArray, uint256 startingIndex) external onlyOwner {
+      for (uint256 i = startingIndex; i < seedsArray.length; i++) {
         updateTokenIdBySeed(seedsArray[i], i);
       }
     }
 
     /**
-     * @notice Convert a Seed struct into a bytes32 hash for use in lookup table. 
+     * @notice Convert a Seed struct into a bytes32 hash and return corresponding tokenId. 
      */
     function getTokenIdFromSeed(INounsSeeder.Seed memory _seed) view public returns (uint256) {
         bytes32 seedHash = keccak256(abi.encodePacked(
@@ -374,7 +381,7 @@ contract FFNDescriptor is Ownable {
         bytes[] memory _parts = new bytes[](10);
         Wearing memory _wearing = clothingState[tokenId];
         // In order to know the length of `_parts` in advance, we use the `0`
-        // index to indicate an empty state (indicating an empty RLE). We need
+        // index to indicate an empty state (referencing an empty RLE). We need
         // to know the length because we can't use `push` on in memory arrays.
         _parts[0] = customBackgrounds[_wearing.customBackground];
         // We use `_wearing.overrideBody - 1` so we can assume that `0` is an
