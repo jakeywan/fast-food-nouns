@@ -41,8 +41,11 @@ contract FFNDescriptor is Ownable {
     // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
     bytes32 constant COPYRIGHT_CC0_1_0_UNIVERSAL_LICENSE = 0xa2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499;
 
-    // Noun Color Palettes (Index => Hex Colors)
-    mapping(uint8 => string[]) public palettes;
+    // Nouns color palette (just storing the one array, not a mapping)
+    string[] public nounsPalette;
+
+    // Track whether a given tokenId has opted into the new wearables system
+    bool[1000] public hasUpgraded;
 
     // Descriptive data for wearable to inform rendering engine
     struct WearableData {
@@ -140,43 +143,63 @@ contract FFNDescriptor is Ownable {
 
     /**
      * @notice Update the official Noun descriptor in case it's moved or updated.
+     * @dev For legacy FFNs, and to render heads.
      */
     function setNounDescriptor(INounsDescriptor _descriptor) external onlyOwner {
         nounDescriptor = _descriptor;
     }
 
     /**
-     * @notice Add colors to a color palette.
-     * @dev We still need the official Nouns palette to render FFNs that haven't
-     * opted in to the new system, and to render heads.
+     * @notice Add colors to nounsPalette.
+     * @dev For legacy FFNs, and to render heads.
      */
-    function addManyColorsToPalette(uint8 paletteIndex, string[] calldata newColors) external onlyOwner {
-        require(palettes[paletteIndex].length + newColors.length <= 256, 'Palettes can only hold 256 colors');
+    function addManyColorsToNounsPalette(string[] calldata newColors) external onlyOwner {
         for (uint256 i = 0; i < newColors.length; i++) {
-            addColorToPalette(paletteIndex, newColors[i]);
+            addColorToPalette(newColors[i]);
         }
     }
 
     /**
      * @notice Add a single color to a color palette.
      */
-    function addColorToPalette(uint8 _paletteIndex, string calldata _color) public onlyOwner {
-        require(palettes[_paletteIndex].length <= 255, 'Palettes can only hold 256 colors');
-        palettes[_paletteIndex].push(_color);
+    function addColorToPalette(string calldata _color) public onlyOwner {
+        nounsPalette.push(_color);
     }
 
     /**
      * @notice Given a seed, find the corresponding tokenId, then assemble.
      * @dev The FFNs token contract doesn't send us the tokenId, so we're inferring
-     * it from the seed passed.
+     * it from the seed passed. This is the only function called by the FFN contract.
      */
     function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
         uint256 tokenId = getTokenIdFromSeed(seed);
-        MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
-            parts: _getPartsForSeed(seed, tokenId),
-            background: nounDescriptor.backgrounds(seed.background)
-        });
-        return NFTDescriptor.generateSVGImage(params, palettes);
+
+        // If tokenId hasn't opted into new system, fetch legacy parts. Replicates
+        // NounsDescriptor.sol.
+        if (hasUpgraded[tokenId] == false) {
+            bytes[] memory _parts = new bytes[](4);
+            _parts[0] = nounDescriptor.bodies(seed.body);
+            _parts[1] = nounDescriptor.accessories(seed.accessory);
+            _parts[2] = nounDescriptor.heads(seed.head);
+            _parts[3] = nounDescriptor.glasses(seed.glasses);
+
+            MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
+                parts: _parts,
+                background: nounDescriptor.backgrounds(seed.background)
+            });
+            
+            return NFTDescriptor.generateSVGImage(params, nounsPalette);
+        }
+
+        // If token has opted in to new system, render new parts. We need to gen
+        // each rect individually, and then compose the SVG.
+        // WearableRef[] memory wearableRefs = wearablesByTokenId[tokenId];
+
+        // _parts[0] = WearableData({
+        //     rleData: '',
+        //     palette: [],
+        //     gridSize: 32
+        // })
     }
 
     /**
@@ -190,6 +213,9 @@ contract FFNDescriptor is Ownable {
         view
         returns (bytes[] memory)
     {
+        
+        // If tokenId has opted into new system, assemble parts.
+
         /**
         // List of WearableRefs for this user
         WearableRef[] memory wearableRefs = wearablesByTokenId[tokenId];
@@ -259,7 +285,7 @@ library MultiPartRLEToSVG {
     /**
      * @notice Given RLE image parts and color palettes, merge to generate a single SVG image.
      */
-    function generateSVG(SVGParams memory params, mapping(uint8 => string[]) storage palettes)
+    function generateSVG(SVGParams memory params, string[] storage palette)
         internal
         view
         returns (string memory svg)
@@ -269,7 +295,7 @@ library MultiPartRLEToSVG {
             abi.encodePacked(
                 '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
                 '<rect width="100%" height="100%" fill="#', params.background, '" />',
-                _generateSVGRects(params, palettes),
+                _generateSVGRects(params.parts, palette),
                 '</svg>'
             )
         );
@@ -279,7 +305,7 @@ library MultiPartRLEToSVG {
      * @notice Given RLE image parts and color palettes, generate SVG rects.
      */
     // prettier-ignore
-    function _generateSVGRects(SVGParams memory params, mapping(uint8 => string[]) storage palettes)
+    function _generateSVGRects(bytes[] memory parts, string[] storage palette)
         private
         view
         returns (string memory svg)
@@ -292,9 +318,8 @@ library MultiPartRLEToSVG {
             '320' 
         ];
         string memory rects;
-        for (uint8 p = 0; p < params.parts.length; p++) {
-            DecodedImage memory image = _decodeRLEImage(params.parts[p]);
-            string[] storage palette = palettes[image.paletteIndex];
+        for (uint8 p = 0; p < parts.length; p++) {
+            DecodedImage memory image = _decodeRLEImage(parts[p]);
             uint256 currentX = image.bounds.left;
             uint256 currentY = image.bounds.top;
             uint256 cursor;
@@ -380,40 +405,13 @@ library NFTDescriptor {
     }
 
     /**
-     * @notice Construct an ERC721 token URI.
-     */
-    function constructTokenURI(TokenURIParams memory params, mapping(uint8 => string[]) storage palettes)
-        internal
-        view
-        returns (string memory)
-    {
-        string memory image = generateSVGImage(
-            MultiPartRLEToSVG.SVGParams({ parts: params.parts, background: params.background }),
-            // IMPORTANT: you must populate these before you can fetch token URIs
-            palettes
-        );
-
-        // prettier-ignore
-        return string(
-            abi.encodePacked(
-                'data:application/json;base64,',
-                Base64.encode(
-                    bytes(
-                        abi.encodePacked('{"name":"', params.name, '", "description":"', params.description, '", "image": "', 'data:image/svg+xml;base64,', image, '"}')
-                    )
-                )
-            )
-        );
-    }
-
-    /**
      * @notice Generate an SVG image for use in the ERC721 token URI.
      */
-    function generateSVGImage(MultiPartRLEToSVG.SVGParams memory params, mapping(uint8 => string[]) storage palettes)
+    function generateSVGImage(MultiPartRLEToSVG.SVGParams memory params, string[] storage palette)
         internal
         view
         returns (string memory svg)
     {
-        return Base64.encode(bytes(MultiPartRLEToSVG.generateSVG(params, palettes)));
+        return Base64.encode(bytes(MultiPartRLEToSVG.generateSVG(params, palette)));
     }
 }

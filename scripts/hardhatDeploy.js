@@ -296,7 +296,7 @@ async function main() {
     "c15927",
     "e0c12e"
   ]
-  const palettes = await ffnDescriptor.addManyColorsToPalette(0, colors)
+  const palettes = await ffnDescriptor.addManyColorsToNounsPalette(colors)
   console.log('Populated palettes')
 
   // Execute a test mint
@@ -348,10 +348,10 @@ async function main() {
   // console.log('Is wearing clothing: ', isWearingClothing)
 
   // Fetch test tokenURI
-  // const tokenURI = await nounsToken.tokenURI(0, {
-  //   from: testAccounts[0]
-  // })
-  // console.log('Token uri for tokenId 0: ', tokenURI)
+  const tokenURI = await nounsToken.tokenURI(0, {
+    from: testAccounts[0]
+  })
+  console.log('Token uri for tokenId 0: ', tokenURI)
 
 }
 
