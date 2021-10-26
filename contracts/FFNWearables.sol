@@ -18,18 +18,16 @@ pragma solidity ^0.8.6;
 
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-// import { IProxyRegistry } from './external/opensea/IProxyRegistry.sol';
-import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
 contract FFNWearables is ERC1155, Ownable {
-    using Strings for uint256;
 
     // The internal tokenId tracker
     uint256 private _currentId;
 
     struct WearableData {
+        string name;
         bytes rleData;
         string[] palette;
         uint256 gridSize;
@@ -72,9 +70,8 @@ contract FFNWearables is ERC1155, Ownable {
      */
     function tokenURI(uint256 tokenId) public view returns (string memory) {
         string memory base64SVG = generateSVGImage(tokenId);
-        string memory tokenIdString = tokenId.toString();
-        string memory name = string(abi.encodePacked('Fast Food Noun ', tokenIdString));
-        string memory description = 'test';
+        string memory name = wearableDataByTokenId[tokenId].name;
+        string memory description = 'TODO';
 
         string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
         
