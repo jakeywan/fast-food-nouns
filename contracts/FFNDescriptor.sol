@@ -21,24 +21,53 @@ import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
 import { INounsToken } from './interfaces/INounsToken.sol';
 import { INounsSeeder } from './interfaces/INounsSeeder.sol';
+import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
 contract FFNDescriptor is Ownable {
     using Strings for uint256;
 
-    // A mapping of seed values (concatenated into bytes) to tokenIds, so we can
-    // lookup tokenIds by seed
-    // TODO: check if it's cheaper to send these as strings or as
+    // Concatenated, then hashed, seed values to use as tokenId lookup table
     mapping(bytes32 => uint256) public tokenIdsBySeed;
+
+    // Used to fetch base parts (head, background) and render non-opted-in FFNs
+    INounsDescriptor public nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
+
+    // Used to check tokenId ownership before wearing clothes
+    INounsToken public fastFoodNouns = INounsToken(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
+
+    // prettier-ignore
+    // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
+    bytes32 constant COPYRIGHT_CC0_1_0_UNIVERSAL_LICENSE = 0xa2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499;
+
+    // Noun Color Palettes (Index => Hex Colors)
+    mapping(uint8 => string[]) public palettes;
+
+    // Descriptive data for wearable to inform rendering engine
+    struct WearableData {
+        bytes rleData;
+        string[] palette;
+        uint256 gridSize;
+    }
+
+    // A reference to a WearableData on another contract
+    struct WearableRef {
+        address contractAddress;
+        uint256 tokenId;
+    }
+
+    // Determines where in the stack the head is inserted per tokenId
+    uint256[] public headPosition;
+
+    // The state of what a given tokenId is wearing (tokenId => list of items worn)
+    mapping(uint256 => WearableRef[]) public wearableRefsByTokenId;
 
     /**
      * @notice Update an individual bytes32 => tokenId mapping.
-     * @dev While this structure makes it possible to have many seeds for the
-     * same tokenId (in case of erroneous updates), we can only have
-     * one of each seed. This means the worst case is that we have extra (erroneous
-     * but not used elsewhere) seeds for the same tokenId (that will never
-     * actually get invoked). So not worth deleting them.
+     * @dev While this structure makes it possible to accidentally add many seeds
+     * for the same tokenId, we can still only have one of each seed. Not worth
+     * adding a delete function.
      */
     function updateTokenIdBySeed(INounsSeeder.Seed memory seed, uint256 tokenId) public onlyOwner {
         bytes32 seedHash = keccak256(abi.encodePacked(
@@ -52,12 +81,14 @@ contract FFNDescriptor is Ownable {
     }
 
     // TODO: This fails from a too-large input size. Let's make it possible to
-    // break this into chunks (doing 1-by-1 is also too much gas).
+    // break this into chunks (doing 1-by-1 is also too much gas). add a
+    // `uint256 startingIndex` and make i = `startingIndex` so we can upload
+    // in chunks.
     /**
      * @notice Batch upload all bytes32 => tokenId mappings.
      */
-    function updateAllTokenIdsBySeed(INounsSeeder.Seed[] memory seedsArray, uint256 startingIndex) external onlyOwner {
-      for (uint256 i = startingIndex; i < seedsArray.length; i++) {
+    function updateAllTokenIdsBySeed(INounsSeeder.Seed[] memory seedsArray) external onlyOwner {
+      for (uint256 i = 0; i < seedsArray.length; i++) {
         updateTokenIdBySeed(seedsArray[i], i);
       }
     }
@@ -76,294 +107,68 @@ contract FFNDescriptor is Ownable {
         return tokenIdsBySeed[seedHash];
     }
 
-    // modified. the NounsDescriptor contract. For the main Nouns SVG parts, we're going
-    // to fetch them directly from the live contract. Then we're going to insert
-    // our hat, and assemble into the base64 encoded tokenURI.
-    // MAINNET
-    INounsDescriptor public nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
-
-    // NounsToken.sol contract. Will be used to check ownership.
-    INounsToken public fastFoodNouns = INounsToken(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
-
-    // prettier-ignore
-    // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
-    bytes32 constant COPYRIGHT_CC0_1_0_UNIVERSAL_LICENSE = 0xa2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499;
-
-    // Noun Color Palettes (Index => Hex Colors)
-    mapping(uint8 => string[]) public palettes;
-
-    // Custom Backgrounds (RLE)
-    bytes[] public customBackgrounds;
-
-    // Custom Bodies (RLE)
-    bytes[] public customBodies;
-
-    // Custom Accessories (RLE)
-    bytes[] public customAccessories;
-
-    // Custom Hats (RLE)
-    bytes[] public customHats;
-
-    // Custom Glasses (RLE)
-    bytes[] public customGlasses;
-
-    // Custom Overlay (RLE)
-    bytes[] public customOverlays;
-
-    // Clothing state for each FFN. Users can set multiple items in each class.
-    // uints in the array correspond to the index of the item from corresponding
-    // state (e.g. `customGlasses`).
-    // IMPORTANT: `0` index here is a null state. It will reference an empty png
-    // RLE (`0x0000000000`). This way we avoid lots of additional rendering logic.
-    struct Wearing {
-        uint256 customBackground;
-        uint256 customBody;
-        uint256 customAccessory;
-        uint256 customHat;
-        uint256 customGlasses;
-        uint256 customOverlay;
-        uint256 overrideBody;
-        uint256 overrideAccessory;
-        uint256 overrideGlasses;
+    /**
+     * @notice Wear wearables.
+     * TODO: I think we also need to include and update head position here.
+     */
+    function wearWearables(uint256 tokenId, WearableRef[] calldata wRefs) external {
+        // Verify ownership of FFN NFT
+        require(msg.sender == fastFoodNouns.ownerOf(tokenId), "Not your Fast Food Noun.");
+        // Empty out existing wearablesRefs for this tokenId
+        delete wearableRefsByTokenId[tokenId];
+        // Loop, verify ownership, save to state
+        for (uint256 i = 0; i < wRefs.length; i++) {
+            IERC721 wContract = IERC721(wRefs[i].contractAddress);
+            require(msg.sender == wContract.ownerOf(wRefs[i].tokenId), "Not your wearable.");
+            wearableRefsByTokenId[tokenId].push(wRefs[i]);
+        }
+        // TODO: We should emit an event here for clients
     }
 
-    // Tracks state of clothing per tokenId. Array of `Wearing` structs.
-    Wearing[1000] private clothingState;
 
     /**
-     * @notice Wear clothes
+     * @notice Return the list of wearables selected for a given tokenId.
+     * TODO: Do we need this? Or is it already available?
      */
-    function wearClothes(uint256 tokenId, Wearing calldata _wearing) external {
-        // TODO: enable either the contract owner or token owner to do this.
-        // this way we can turn the hat on for everyone?
-        require (msg.sender == fastFoodNouns.ownerOf(tokenId), "not your Noun");
-        clothingState[tokenId] = _wearing;
+    function getWearableRefsForTokenId(uint256 tokenId)
+        public
+        view
+        returns (WearableRef[] memory)
+    {
+        return wearableRefsByTokenId[tokenId];
     }
 
     /**
-     * @notice Return the list of clothes selected for a given tokenId
+     * @notice Update the official Noun descriptor in case it's moved or updated.
      */
-    function getClothesForTokenId(uint256 tokenId) public view returns (Wearing memory) {
-        return clothingState[tokenId];
-    }
-
-    /**
-     * @notice Update the underlying Noun descriptor (in case they change it).
-     */
-    event NounDescriptorUpdated(INounsDescriptor descriptor);
     function setNounDescriptor(INounsDescriptor _descriptor) external onlyOwner {
         nounDescriptor = _descriptor;
-        emit NounDescriptorUpdated(_descriptor);
-    }
-
-    /**
-     * @notice Set Fast Food Nouns contract address
-     */
-    function setFastFoodNouns(INounsToken _address) external onlyOwner {
-        fastFoodNouns = _address;
-    }
-
-    /**
-     * @notice Get the number of available `customBackgrounds`.
-     */
-    function customBackgroundCount() external view returns (uint256) {
-        return customBackgrounds.length;
-    }
-
-    /**
-     * @notice Get the number of available `customBodies`.
-     */
-    function customBodyCount() external view returns (uint256) {
-        return customBodies.length;
-    }
-
-    /**
-     * @notice Get the number of available `customAccessories`.
-     */
-    function customAccessoryCount() external view returns (uint256) {
-        return customAccessories.length;
-    }
-
-    /**
-     * @notice Get the number of available `customHats`.
-     */
-    function customHatCount() external view returns (uint256) {
-        return customHats.length;
-    }
-
-    /**
-     * @notice Get the number of available `customGlasses`.
-     */
-    function customGlassesCount() external view returns (uint256) {
-        return customGlasses.length;
-    }
-
-    /**
-     * @notice Get the number of available `customOverlays`.
-     */
-    function customOverlayCount() external view returns (uint256) {
-        return customOverlays.length;
     }
 
     /**
      * @notice Add colors to a color palette.
-     * @dev This function can only be called by the owner.
+     * @dev We still need the official Nouns palette to render FFNs that haven't
+     * opted in to the new system, and to render heads.
      */
     function addManyColorsToPalette(uint8 paletteIndex, string[] calldata newColors) external onlyOwner {
         require(palettes[paletteIndex].length + newColors.length <= 256, 'Palettes can only hold 256 colors');
         for (uint256 i = 0; i < newColors.length; i++) {
-            _addColorToPalette(paletteIndex, newColors[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom backgrounds.
-     */
-    function addManyCustomBackgrounds(bytes[] calldata _backgrounds) external onlyOwner {
-        for (uint256 i = 0; i < _backgrounds.length; i++) {
-            _addCustomBackground(_backgrounds[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom bodies.
-     */
-    function addManyCustomBodies(bytes[] calldata _bodies) external onlyOwner {
-        for (uint256 i = 0; i < _bodies.length; i++) {
-            _addCustomBody(_bodies[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom accessories.
-     */
-    function addManyCustomAccessories(bytes[] calldata _accessories) external onlyOwner {
-        for (uint256 i = 0; i < _accessories.length; i++) {
-            _addCustomAccessory(_accessories[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom hats.
-     */
-    function addManyCustomHats(bytes[] calldata _hats) external onlyOwner {
-        for (uint256 i = 0; i < _hats.length; i++) {
-            _addCustomHat(_hats[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom glasses.
-     */
-    function addManyCustomGlasses(bytes[] calldata _glasses) external onlyOwner {
-        for (uint256 i = 0; i < _glasses.length; i++) {
-            _addCustomGlasses(_glasses[i]);
-        }
-    }
-
-    /**
-     * @notice Batch add custom overlays.
-     */
-    function addManyCustomOverlays(bytes[] calldata _overlays) external onlyOwner {
-        for (uint256 i = 0; i < _overlays.length; i++) {
-            _addCustomOverlay(_overlays[i]);
+            addColorToPalette(paletteIndex, newColors[i]);
         }
     }
 
     /**
      * @notice Add a single color to a color palette.
-     * @dev This function can only be called by the owner.
      */
-    function addColorToPalette(uint8 _paletteIndex, string calldata _color) external onlyOwner {
+    function addColorToPalette(uint8 _paletteIndex, string calldata _color) public onlyOwner {
         require(palettes[_paletteIndex].length <= 255, 'Palettes can only hold 256 colors');
-        _addColorToPalette(_paletteIndex, _color);
+        palettes[_paletteIndex].push(_color);
     }
 
     /**
-     * @notice Add custom background.
-     */
-    function addCustomBackground(bytes calldata _background) external onlyOwner {
-        _addCustomBackground(_background);
-    }
-
-    /**
-     * @notice Add custom body.
-     */
-    function addCustomBody(bytes calldata _body) external onlyOwner {
-        _addCustomBody(_body);
-    }
-
-    /**
-     * @notice Add custom accessory.
-     */
-    function addCustomAccessory(bytes calldata _accessory) external onlyOwner {
-        _addCustomAccessory(_accessory);
-    }
-
-    /**
-     * @notice Add custom hat.
-     */
-    function addCustomHat(bytes calldata _hat) external onlyOwner {
-        _addCustomHat(_hat);
-    }
-
-    /**
-     * @notice Add custom hat.
-     */
-    function addCustomGlasses(bytes calldata _glasses) external onlyOwner {
-        _addCustomGlasses(_glasses);
-    }
-
-    /**
-     * @notice Add custom hat.
-     */
-    function addCustomOverlay(bytes calldata _overlay) external onlyOwner {
-        _addCustomOverlay(_overlay);
-    }
-
-    /**
-     * @notice Given a token ID and seed, construct a token URI for an official Nouns DAO noun.
-     * @dev The returned value may be a base64 encoded data URI or an API URL.
-     */
-    function tokenURI(uint256 tokenId, INounsSeeder.Seed memory seed) external view returns (string memory) {
-        return dataURI(tokenId, seed);
-    }
-
-    /**
-     * @notice Given a token ID and seed, construct a base64 encoded data URI for an official Nouns DAO noun.
-     */
-    function dataURI(uint256 tokenId, INounsSeeder.Seed memory seed) public view returns (string memory) {
-        string memory nounId = tokenId.toString();
-        string memory name = string(abi.encodePacked('Noun ', nounId));
-        string memory description = string(abi.encodePacked('Noun ', nounId, ' is a member of the Nouns DAO'));
-
-        return genericDataURI(name, description, seed, tokenId);
-    }
-
-    /**
-     * @notice Given a name, description, and seed, construct a base64 encoded data URI.
-     */
-    function genericDataURI(
-        string memory name,
-        string memory description,
-        INounsSeeder.Seed memory seed,
-        uint256 tokenId
-    ) public view returns (string memory) {
-        NFTDescriptor.TokenURIParams memory params = NFTDescriptor.TokenURIParams({
-            name: name,
-            description: description,
-            parts: _getPartsForSeed(seed, tokenId),
-            // Must point at production Nouns descriptor, not our own
-            background: nounDescriptor.backgrounds(seed.background)
-        });
-        return NFTDescriptor.constructTokenURI(params, palettes);
-    }
-
-    /**
-     * @notice Given a seed, construct a base64 encoded SVG image.
-     * @dev The seed generates the base Noun (referencing the external descriptor),
-     * but the tokenId enables contruction of customizations via our own internal
-     * state.
+     * @notice Given a seed, find the corresponding tokenId, then assemble.
+     * @dev The FFNs token contract doesn't send us the tokenId, so we're inferring
+     * it from the seed passed.
      */
     function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
         uint256 tokenId = getTokenIdFromSeed(seed);
@@ -375,90 +180,54 @@ contract FFNDescriptor is Ownable {
     }
 
     /**
-     * @notice Get all Noun parts for the passed `seed` plus customizations.
+     * @notice Assemble parts for this tokenId.
+     * @dev We need to render each rect separately, compose an array, and sandwich
+     * them with the final SVG tag. This differs from Nouns because we don't have
+     * a universal palette. Each NFT has it's own palette.
      */
-    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId) internal view returns (bytes[] memory) {
+    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId)
+        internal
+        view
+        returns (bytes[] memory)
+    {
+        /**
+        // List of WearableRefs for this user
+        WearableRef[] memory wearableRefs = wearablesByTokenId[tokenId];
+        // List of WearableData we're building
+        WearableData[] memory wearableData;
+        // Base Fast Food shirt is always inserted as fallback
+        _parts[0] = WearableData({
+            rleData: '',
+            palette: [],
+            gridSize: 32
+        })
+        // For each WearableRef, generate an SVG rect
+        for (uint256 i = 0; i < wearableRefs.length; i++) {
+            
+            // At index of the head position, insert it w/ fallback glasses
+            if (i == headPosition[tokenId]) {
+                _parts[5] = nounDescriptor.heads(seed.head);
+                _parts[6] = WearableData({
+                    rleData: '',
+                    palette: [],
+                    gridSize: 32
+                })
+            }
+            // If user doesn't own wearable, delete it from state and skip it
+            IERC721 memory wContract = IERC721(wearableRefs[i].contractAddress);
+            if (msg.sender !== wContract.ownerOf(wearableRefs[i].tokenId)) {
+                delete wearableRefs[i].tokenId;
+                continue;
+            }
+            // Fetch WearableData from contract and insert it
+            _parts[7] = wContract.openWearable(wearableRefs[i].tokenId);
+
+        }
+        */
+
+        // TODO: Just putting these here so it'll compile.
         bytes[] memory _parts = new bytes[](10);
-        Wearing memory _wearing = clothingState[tokenId];
-        // In order to know the length of `_parts` in advance, we use the `0`
-        // index to indicate an empty state (referencing an empty RLE). We need
-        // to know the length because we can't use `push` on in memory arrays.
-        _parts[0] = customBackgrounds[_wearing.customBackground];
-        // We use `_wearing.overrideBody - 1` so we can assume that `0` is an
-        // empty state and still access the 0-indexed items on `nounDescriptor`.
-        // This means our front end must increase selected item by 1 (e.g. to
-        // select the 0-indexed body, send 1).
-        // NOTE: If users select a customGlasses, for example, should we hide
-        // the nounDescriptor glasses? like, one or the other? if so we should
-        // have a way to get just the head.
-        _parts[1] = _wearing.overrideBody > 0 ?
-            nounDescriptor.bodies(_wearing.overrideBody - 1) : nounDescriptor.bodies(seed.body);
-        _parts[2] = customBodies[_wearing.customBody];
-        _parts[3] = _wearing.overrideAccessory > 0 ?
-            nounDescriptor.accessories(_wearing.overrideAccessory - 1) : nounDescriptor.accessories(seed.accessory);
-        // do we need this? isn't this a shirt? Well, imagine a gold chain accessory.
-        // we really need the ability to remove the accessory and not have one if
-        // we need it to fit over the custom body. otherwise we're going to get the
-        // default accessory (which sometimes looks like a shirt pattern) over our
-        // custom shirts constantly
-        _parts[4] = customAccessories[_wearing.customAccessory];
-        _parts[5] = nounDescriptor.heads(seed.head);
-        _parts[6] = customHats[_wearing.customHat];
-        _parts[7] = _wearing.overrideGlasses > 0 ?
-            nounDescriptor.glasses(_wearing.overrideGlasses - 1) : nounDescriptor.glasses(seed.glasses);
-        _parts[8] = customGlasses[_wearing.customGlasses];
-        _parts[9] = customOverlays[_wearing.customOverlay];
-
         return _parts;
-    }
-
-    /**
-     * @notice Add a single color to a color palette.
-     */
-    function _addColorToPalette(uint8 _paletteIndex, string calldata _color) internal {
-        palettes[_paletteIndex].push(_color);
-    }
-
-    /**
-     * @notice Add custom background.
-     */
-    function _addCustomBackground(bytes calldata _background) internal {
-        customBackgrounds.push(_background);
-    }
-
-    /**
-     * @notice Add custom body.
-     */
-    function _addCustomBody(bytes calldata _body) internal {
-        customBodies.push(_body);
-    }
-
-    /**
-     * @notice Add custom accessory.
-     */
-    function _addCustomAccessory(bytes calldata _accessory) internal {
-        customAccessories.push(_accessory);
-    }
-
-    /**
-     * @notice Add custom hat.
-     */
-    function _addCustomHat(bytes calldata _hat) internal {
-        customHats.push(_hat);
-    }
-
-    /**
-     * @notice Add custom glasses.
-     */
-    function _addCustomGlasses(bytes calldata _glasses) internal {
-        customGlasses.push(_glasses);
-    }
-
-    /**
-     * @notice Add custom overlay (miscellaneous, goes on top of everything).
-     */
-    function _addCustomOverlay(bytes calldata _overlay) internal {
-        customOverlays.push(_overlay);
     }
 
 }

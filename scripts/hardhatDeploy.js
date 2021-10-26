@@ -330,55 +330,28 @@ async function main() {
   })
   console.log('Token id from seed: ', getTokenId)
 
-  // Set a new clothing item to the closet
-  // const clothing = await nounsToken.addClothes('<path d="M230 220H90V230H230V220Z" fill="#005A9C"/><path d="M230 230H90V240H230V230Z" fill="#005A9C"/><path d="M230 240H90V250H230V240Z" fill="#005A9C"/><path d="M110 250H90V260H110V250Z" fill="#005A9C"/><path d="M230 250H120V260H230V250Z" fill="#005A9C"/><path d="M110 260H90V270H110V260Z" fill="#005A9C"/><path d="M230 260H120V270H230V260Z" fill="#005A9C"/><path d="M110 270H90V280H110V270Z" fill="#005A9C"/><path d="M230 270H120V280H230V270Z" fill="#005A9C"/><path d="M110 280H90V290H110V280Z" fill="#005A9C"/><path d="M230 280H120V290H230V280Z" fill="#005A9C"/><path d="M110 290H90V300H110V290Z" fill="#005A9C"/><path d="M230 290H120V300H230V290Z" fill="#005A9C"/><path d="M110 300H90V310H110V300Z" fill="#005A9C"/><path d="M230 300H120V310H230V300Z" fill="#005A9C"/><path d="M110 310H90V320H110V310Z" fill="#005A9C"/><path d="M230 310H120V320H230V310Z" fill="#005A9C"/><path d="M160 230H150V280H160V230Z" fill="white"/><path d="M190 270H160V280H190V270Z" fill="white"/><path d="M180 260H170V300H180V260Z" fill="white"/><path d="M200 260H190V300H200V260Z" fill="white"/><path d="M190 250H180V260H190V250Z" fill="white"/><path d="M230 210H90V220H230V210Z" fill="#005A9C"/>', {
-  //   from: testAccounts[0],
-  //   gasLimit: 1000000
-  // })
-  // console.log('Added Dodgers shirt to clothingList')
-
-  // Put clothes on tokenId 0
-  // const wearClothes = await nounsToken.wearClothes(0, [0, 1], {
-  //   from: testAccounts[0],
-  //   gasLimit: 250000
-  // })
-  // console.log('tokenId 0 wearing hat and shirt')
-
-  // Get clothes worn by tokenId 0
-  // const ourClothes = await nounsToken.getClothesForTokenId(0, {
-  //   from: testAccounts[0],
-  //   gasLimit: 250000
-  // })
-  // console.log('tokenId 0 clothing: ', JSON.stringify(ourClothes))
-  const nullRLE = '0x0000000000'
-  const background = await ffnDescriptor.addCustomBackground(nullRLE)
-  const body = await ffnDescriptor.addCustomBody(nullRLE)
-  const hat = await ffnDescriptor.addCustomHat(nullRLE)
-  const accessory = await ffnDescriptor.addCustomAccessory(nullRLE)
-  const glasses = await ffnDescriptor.addCustomGlasses(nullRLE)
-  const overlay = await ffnDescriptor.addCustomOverlay(nullRLE)
   // add a body at the 1 index (gremplin stains)
-  const gremplin = await ffnDescriptor.addCustomBody('0x0015171f090ef00ef002f001f103f002f206f001f003f102f002f201f002f303f001f001f1010001f101f001f201f001f201f003f302f002f0010004f001f202f002f302f002f0010007f001f303f002f0010002f001f308f002f0010004f001f206f002f001000bf002f001000bf0')
-  console.log('Populated null states for custom items')
+  // const gremplin = await ffnDescriptor.addCustomBody('0x0015171f090ef00ef002f001f103f002f206f001f003f102f002f201f002f303f001f001f1010001f101f001f201f001f201f003f302f002f0010004f001f202f002f302f002f0010007f001f303f002f0010002f001f308f002f0010004f001f206f002f001000bf002f001000bf0')
+  // console.log('Populated null states for custom items')
 
   // Wear clothes.
   // First set the Fast Food Nouns contract at our just-deployed test contract
   // so when we check tokenURI it works
-  await ffnDescriptor.setFastFoodNouns(nounsToken.address)
-  await ffnDescriptor.wearClothes('0', [0, 1, 0, 0, 0, 0, 0, 0, 0], {
-    from: testAccounts[0]
-  })
-  console.log('Wearing clothes')
+  // await ffnDescriptor.setFastFoodNouns(nounsToken.address)
+  // await ffnDescriptor.wearClothes('0', [0, 1, 0, 0, 0, 0, 0, 0, 0], {
+  //   from: testAccounts[0]
+  // })
+  // console.log('Wearing clothes')
 
   // Fetch clothes for this tokenId. Should correspond to the above.
-  const isWearingClothing = await ffnDescriptor.getClothesForTokenId('0')
-  console.log('Is wearing clothing: ', isWearingClothing)
+  // const isWearingClothing = await ffnDescriptor.getClothesForTokenId('0')
+  // console.log('Is wearing clothing: ', isWearingClothing)
 
   // Fetch test tokenURI
-  const tokenURI = await nounsToken.tokenURI(0, {
-    from: testAccounts[0]
-  })
-  console.log('Token uri for tokenId 0: ', tokenURI)
+  // const tokenURI = await nounsToken.tokenURI(0, {
+  //   from: testAccounts[0]
+  // })
+  // console.log('Token uri for tokenId 0: ', tokenURI)
 
 }
 
