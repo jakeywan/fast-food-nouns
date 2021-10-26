@@ -9,6 +9,7 @@
   "main": "src/index.ts",
   "scripts": {
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
+    "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
     "verify-test": "npx hardhat verify --network rinkeby 0x73E5C1d945372B0af153e0AFE1FF16c99936ae7b"
