@@ -21,7 +21,7 @@ import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
 import { INounsToken } from './interfaces/INounsToken.sol';
 import { INounsSeeder } from './interfaces/INounsSeeder.sol';
-import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
@@ -47,24 +47,15 @@ contract FFNDescriptor is Ownable {
     // Track whether a given tokenId has opted into the new wearables system
     bool[1000] public hasUpgraded;
 
-    // Descriptive data for wearable to inform rendering engine
-    struct WearableData {
-        bytes rleData;
-        string[] palette;
-        uint256 gridSize;
-    }
-
-    // A reference to a WearableData on another contract
-    struct WearableRef {
-        address contractAddress;
-        uint256 tokenId;
-    }
-
     // Determines where in the stack the head is inserted per tokenId
     uint256[] public headPosition;
 
+    // Defaults we'll use for each FFN
+    IOpenWearables.WearableData public fastFoodShirt;
+    IOpenWearables.WearableData public fastFoodGlasses;
+
     // The state of what a given tokenId is wearing (tokenId => list of items worn)
-    mapping(uint256 => WearableRef[]) public wearableRefsByTokenId;
+    mapping(uint256 => IOpenWearables.WearableRef[]) public wearableRefsByTokenId;
 
     /**
      * @notice Update an individual bytes32 => tokenId mapping.
@@ -114,14 +105,20 @@ contract FFNDescriptor is Ownable {
      * @notice Wear wearables.
      * TODO: I think we also need to include and update head position here.
      */
-    function wearWearables(uint256 tokenId, WearableRef[] calldata wRefs) external {
+    function wearWearables(
+        uint256 tokenId,
+        IOpenWearables.WearableRef[] calldata wRefs
+    )
+        external 
+    {
         // Verify ownership of FFN NFT
         require(msg.sender == fastFoodNouns.ownerOf(tokenId), "Not your Fast Food Noun.");
         // Empty out existing wearablesRefs for this tokenId
         delete wearableRefsByTokenId[tokenId];
         // Loop, verify ownership, save to state
         for (uint256 i = 0; i < wRefs.length; i++) {
-            IERC721 wContract = IERC721(wRefs[i].contractAddress);
+            // TODO: We must also support IERC1155
+            IOpenWearables wContract = IOpenWearables(wRefs[i].contractAddress);
             require(msg.sender == wContract.ownerOf(wRefs[i].tokenId), "Not your wearable.");
             wearableRefsByTokenId[tokenId].push(wRefs[i]);
         }
@@ -136,7 +133,7 @@ contract FFNDescriptor is Ownable {
     function getWearableRefsForTokenId(uint256 tokenId)
         public
         view
-        returns (WearableRef[] memory)
+        returns (IOpenWearables.WearableRef[] memory)
     {
         return wearableRefsByTokenId[tokenId];
     }
@@ -171,89 +168,76 @@ contract FFNDescriptor is Ownable {
      * @dev The FFNs token contract doesn't send us the tokenId, so we're inferring
      * it from the seed passed. This is the only function called by the FFN contract.
      */
-    function generateSVGImage(INounsSeeder.Seed memory seed) external view returns (string memory) {
+    function generateSVGImage(INounsSeeder.Seed memory seed) external returns (string memory) {
         uint256 tokenId = getTokenIdFromSeed(seed);
 
-        // If tokenId hasn't opted into new system, fetch legacy parts. Replicates
-        // NounsDescriptor.sol.
+        // If tokenId hasn't opted into new system, fetch legacy parts.
         if (hasUpgraded[tokenId] == false) {
-            bytes[] memory _parts = new bytes[](4);
-            _parts[0] = nounDescriptor.bodies(seed.body);
-            _parts[1] = nounDescriptor.accessories(seed.accessory);
-            _parts[2] = nounDescriptor.heads(seed.head);
-            _parts[3] = nounDescriptor.glasses(seed.glasses);
-
-            MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
-                parts: _parts,
-                background: nounDescriptor.backgrounds(seed.background)
-            });
-            
-            return NFTDescriptor.generateSVGImage(params, nounsPalette);
+            return generateLegacySVG(seed);
         }
 
         // If token has opted in to new system, render new parts. We need to gen
         // each rect individually, and then compose the SVG.
-        // WearableRef[] memory wearableRefs = wearablesByTokenId[tokenId];
+        IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
+        // Adding 2 to account for the head and default shirt
+        string[] memory _rects = new string[](wearableRefs.length + 2);
 
-        // _parts[0] = WearableData({
-        //     rleData: '',
-        //     palette: [],
-        //     gridSize: 32
-        // })
-    }
+        for (uint256 i = 0; i < _rects.length; i++) {
 
-    /**
-     * @notice Assemble parts for this tokenId.
-     * @dev We need to render each rect separately, compose an array, and sandwich
-     * them with the final SVG tag. This differs from Nouns because we don't have
-     * a universal palette. Each NFT has it's own palette.
-     */
-    function _getPartsForSeed(INounsSeeder.Seed memory seed, uint256 tokenId)
-        internal
-        view
-        returns (bytes[] memory)
-    {
-        
-        // If tokenId has opted into new system, assemble parts.
-
-        /**
-        // List of WearableRefs for this user
-        WearableRef[] memory wearableRefs = wearablesByTokenId[tokenId];
-        // List of WearableData we're building
-        WearableData[] memory wearableData;
-        // Base Fast Food shirt is always inserted as fallback
-        _parts[0] = WearableData({
-            rleData: '',
-            palette: [],
-            gridSize: 32
-        })
-        // For each WearableRef, generate an SVG rect
-        for (uint256 i = 0; i < wearableRefs.length; i++) {
-            
-            // At index of the head position, insert it w/ fallback glasses
+            // At index of the head position, insert rect and increment counter
             if (i == headPosition[tokenId]) {
-                _parts[5] = nounDescriptor.heads(seed.head);
-                _parts[6] = WearableData({
-                    rleData: '',
-                    palette: [],
-                    gridSize: 32
-                })
+                // Head
+                bytes[] memory rle;
+                rle[0] = nounDescriptor.heads(seed.head);
+                _rects[i++] = MultiPartRLEToSVG._generateSVGRects(
+                    rle,
+                    nounsPalette
+                );
             }
+
+            // Fetch WearableData, confirm ownership, and insert rect
+            IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
             // If user doesn't own wearable, delete it from state and skip it
-            IERC721 memory wContract = IERC721(wearableRefs[i].contractAddress);
-            if (msg.sender !== wContract.ownerOf(wearableRefs[i].tokenId)) {
+            if (msg.sender != wContract.ownerOf(wearableRefs[i].tokenId)) {
                 delete wearableRefs[i].tokenId;
                 continue;
             }
-            // Fetch WearableData from contract and insert it
-            _parts[7] = wContract.openWearable(wearableRefs[i].tokenId);
+
+            // Ownership confirmed, fetch WearableData from contract and insert rect
+            IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId);
+            bytes[] memory rle;
+            rle[0] = _wearableData.rleData;
+            _rects[i] = MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
+                rle,
+                _wearableData.palette
+            );
 
         }
-        */
+        // string memory stringRects = 
+        return string(abi.encodePacked('<svg>', abi.encode(_rects), '</svg>'));
 
-        // TODO: Just putting these here so it'll compile.
-        bytes[] memory _parts = new bytes[](10);
-        return _parts;
+    }
+
+    /**
+     * @notice Render original SVG in case FFN hasn't opted in to new system.
+     * @dev This should just replicate the existing NounsDescriptor.sol.
+     */
+    function generateLegacySVG(INounsSeeder.Seed memory seed)
+        public
+        returns (string memory)
+    {
+        bytes[] memory _parts = new bytes[](4);
+        _parts[0] = nounDescriptor.bodies(seed.body);
+        _parts[1] = nounDescriptor.accessories(seed.accessory);
+        _parts[2] = nounDescriptor.heads(seed.head);
+        _parts[3] = nounDescriptor.glasses(seed.glasses);
+
+        MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
+            parts: _parts,
+            background: nounDescriptor.backgrounds(seed.background)
+        });
+        
+        return NFTDescriptor.generateSVGImage(params, nounsPalette);
     }
 
 }
@@ -306,7 +290,65 @@ library MultiPartRLEToSVG {
      */
     // prettier-ignore
     function _generateSVGRects(bytes[] memory parts, string[] storage palette)
-        private
+        internal
+        view
+        returns (string memory svg)
+    {
+        string[33] memory lookup = [
+            '0', '10', '20', '30', '40', '50', '60', '70', 
+            '80', '90', '100', '110', '120', '130', '140', '150', 
+            '160', '170', '180', '190', '200', '210', '220', '230', 
+            '240', '250', '260', '270', '280', '290', '300', '310',
+            '320' 
+        ];
+        string memory rects;
+        for (uint8 p = 0; p < parts.length; p++) {
+            DecodedImage memory image = _decodeRLEImage(parts[p]);
+            uint256 currentX = image.bounds.left;
+            uint256 currentY = image.bounds.top;
+            uint256 cursor;
+            string[16] memory buffer;
+
+            string memory part;
+            for (uint256 i = 0; i < image.rects.length; i++) {
+                Rect memory rect = image.rects[i];
+                if (rect.colorIndex != 0) {
+                    buffer[cursor] = lookup[rect.length];          // width
+                    buffer[cursor + 1] = lookup[currentX];         // x
+                    buffer[cursor + 2] = lookup[currentY];         // y
+                    buffer[cursor + 3] = palette[rect.colorIndex]; // color
+
+                    cursor += 4;
+
+                    if (cursor >= 16) {
+                        part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
+                        cursor = 0;
+                    }
+                }
+
+                currentX += rect.length;
+                if (currentX == image.bounds.right) {
+                    currentX = image.bounds.left;
+                    currentY++;
+                }
+            }
+
+            if (cursor != 0) {
+                part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
+            }
+            rects = string(abi.encodePacked(rects, part));
+        }
+        return rects;
+    }
+
+    /**
+     * @notice Given RLE image parts and color palettes, generate SVG rects.
+     * @dev This is a functional duplicate of the above, but takes a `memory`
+     * palette (bec we fetch from external contract) instead of `storage` palette.
+     */
+    // prettier-ignore
+    function _generateSVGRectsMemoryPalette(bytes[] memory parts, string[] memory palette)
+        internal
         view
         returns (string memory svg)
     {

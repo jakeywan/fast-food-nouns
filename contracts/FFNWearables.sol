@@ -26,6 +26,7 @@ contract FFNWearables is ERC1155, Ownable {
     // The internal tokenId tracker
     uint256 private _currentId;
 
+    // TODO: import this from IOpenWearables.sol
     struct WearableData {
         string name;
         bytes rleData;
