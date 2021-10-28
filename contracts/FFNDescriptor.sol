@@ -48,7 +48,7 @@ contract FFNDescriptor is Ownable {
     bool[1000] public hasUpgraded;
 
     // Determines where in the stack the head is inserted per tokenId
-    uint256[] public headPosition;
+    uint256[1000] public headPosition;
 
     // Defaults we'll use for each FFN
     IOpenWearables.WearableData public fastFoodShirt;
@@ -119,16 +119,37 @@ contract FFNDescriptor is Ownable {
         for (uint256 i = 0; i < wRefs.length; i++) {
             // TODO: We must also support IERC1155
             IOpenWearables wContract = IOpenWearables(wRefs[i].contractAddress);
-            require(msg.sender == wContract.ownerOf(wRefs[i].tokenId), "Not your wearable.");
+
+            bool isOwner;
+            // Conditionally check interface support for ERC721 or ERC1155
+            if (wContract.supportsInterface(bytes4(keccak256('ownerOf(uint256)')))) {
+                require(msg.sender == wContract.ownerOf(wRefs[i].tokenId), "Not your wearable.");
+                isOwner = true;
+            }
+            // TODO: Why isn't this evaluating to true?
+            // if (wContract.supportsInterface(bytes4(keccak256('balanceOf(address,uint256)')))) {
+                require(wContract.balanceOf(msg.sender, tokenId) > 0, "Not your wearable.");
+                isOwner = true;
+            // }
+
+            // Set WearableRef to state
+            require(isOwner, "Not your wearable.");
             wearableRefsByTokenId[tokenId].push(wRefs[i]);
+
         }
         // TODO: We should emit an event here for clients
+    }
+
+    /**
+     * @notice Update FFN contract.
+     */
+    function updateFFNContract(address _contract) external onlyOwner {
+        fastFoodNouns = INounsToken(_contract);
     }
 
 
     /**
      * @notice Return the list of wearables selected for a given tokenId.
-     * TODO: Do we need this? Or is it already available?
      */
     function getWearableRefsForTokenId(uint256 tokenId)
         public
@@ -179,42 +200,52 @@ contract FFNDescriptor is Ownable {
         // If token has opted in to new system, render new parts. We need to gen
         // each rect individually, and then compose the SVG.
         IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
-        // Adding 2 to account for the head and default shirt
-        string[] memory _rects = new string[](wearableRefs.length + 2);
-
-        for (uint256 i = 0; i < _rects.length; i++) {
-
-            // At index of the head position, insert rect and increment counter
+        // Final string of all our rects
+        string memory rects;
+        
+        for (uint256 i = 0; i < wearableRefs.length; i++) {
+            // At index of the head position, insert rect and increment `_rectIndex`
             if (i == headPosition[tokenId]) {
                 // Head
-                bytes[] memory rle;
+                // TODO: We can optimize this by not forcing it into an array,
+                // we'd just need to adjust _generateSVGRects to take single param
+                bytes[] memory rle = new bytes[](1);
                 rle[0] = nounDescriptor.heads(seed.head);
-                _rects[i++] = MultiPartRLEToSVG._generateSVGRects(
+                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
                     rle,
                     nounsPalette
-                );
+                )));
             }
 
-            // Fetch WearableData, confirm ownership, and insert rect
+            // Confirm FFN ownership of WearableRef token
             IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
             // If user doesn't own wearable, delete it from state and skip it
-            if (msg.sender != wContract.ownerOf(wearableRefs[i].tokenId)) {
+            address owner = fastFoodNouns.ownerOf(tokenId);
+            // TODO: Support `ownerOf` as well
+            if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
                 delete wearableRefs[i].tokenId;
                 continue;
             }
 
             // Ownership confirmed, fetch WearableData from contract and insert rect
-            IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId);
-            bytes[] memory rle;
+            IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId, owner);
+            bytes[] memory rle = new bytes[](1);
             rle[0] = _wearableData.rleData;
-            _rects[i] = MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
+            
+            rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
                 rle,
                 _wearableData.palette
-            );
-
+            )));
+            
         }
-        // string memory stringRects = 
-        return string(abi.encodePacked('<svg>', abi.encode(_rects), '</svg>'));
+
+        return Base64.encode(abi.encodePacked(
+                '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
+                '<rect width="100%" height="100%" fill="#', nounDescriptor.backgrounds(seed.background), '" />',
+                rects,
+                '</svg>'
+            )
+        );
 
     }
 
@@ -238,6 +269,13 @@ contract FFNDescriptor is Ownable {
         });
         
         return NFTDescriptor.generateSVGImage(params, nounsPalette);
+    }
+
+    /**
+     * @notice Indicate that a FFN should use the new wearables system.
+     */
+    function upgradeToken(uint256 tokenId) external {
+        hasUpgraded[tokenId] = true;
     }
 
 }

@@ -34,10 +34,12 @@ interface IOpenWearables {
         uint256 tokenId;
     }
 
-    function openWearable(uint256 tokenId) external returns (WearableData memory);
+    function openWearable(uint256 tokenId, address owner) external returns (WearableData memory);
 
     function ownerOf(uint256) external returns (address owner);
-    
-    // TODO: Add support for ERC1155 balanceOf
 
+    function balanceOf(address,uint256) external returns (uint256);
+
+    function supportsInterface(bytes4) external returns (bool);
+    
 }

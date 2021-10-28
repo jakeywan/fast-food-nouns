@@ -17,7 +17,7 @@
 pragma solidity ^0.8.6;
 
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
@@ -42,12 +42,15 @@ contract FFNWearables is ERC1155, Ownable {
 
     /**
      * @notice Verify ownership and return WearableData for token requested.
+     * @dev This is soft validation, easily bypassed. It's on contract writers
+     * not to bypass ownership checks. Doing otherwise is tantamount to bypassing
+     * royalties or copyminting.
      */
-    function openWearable(uint256 tokenId)
+    function openWearable(uint256 tokenId, address owner)
         external
         returns (WearableData memory)
     {
-        require(balanceOf(msg.sender, tokenId) > 0, "Wearable not owned.");
+        require(balanceOf(owner, tokenId) > 0, "Wearable not owned.");
 
         return wearableDataByTokenId[tokenId];
     }
