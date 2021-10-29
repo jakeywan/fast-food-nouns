@@ -48,11 +48,11 @@ contract FFNDescriptor is Ownable {
     bool[1000] public hasUpgraded;
 
     // Determines where in the stack the head is inserted per tokenId
-    uint256[1000] public headPosition;
+    uint256[1000] public headPositions;
 
     // Defaults we'll use for each FFN
-    IOpenWearables.WearableData public fastFoodShirt;
-    IOpenWearables.WearableData public fastFoodGlasses;
+    IOpenWearables.WearableData public defaultShirt;
+    IOpenWearables.WearableData public defaultGlasses;
 
     // The state of what a given tokenId is wearing (tokenId => list of items worn)
     mapping(uint256 => IOpenWearables.WearableRef[]) public wearableRefsByTokenId;
@@ -107,6 +107,7 @@ contract FFNDescriptor is Ownable {
      */
     function wearWearables(
         uint256 tokenId,
+        uint256 headPosition,
         IOpenWearables.WearableRef[] calldata wRefs
     )
         external 
@@ -115,6 +116,8 @@ contract FFNDescriptor is Ownable {
         require(msg.sender == fastFoodNouns.ownerOf(tokenId), "Not your Fast Food Noun.");
         // Empty out existing wearablesRefs for this tokenId
         delete wearableRefsByTokenId[tokenId];
+        // Update head position
+        headPositions[tokenId] = headPosition;
         // Loop, verify ownership, save to state
         for (uint256 i = 0; i < wRefs.length; i++) {
             // TODO: We must also support IERC1155
@@ -147,6 +150,25 @@ contract FFNDescriptor is Ownable {
         fastFoodNouns = INounsToken(_contract);
     }
 
+    /**
+     * @notice Update the default shirt.
+     */
+    function setDefaultShirt(IOpenWearables.WearableData calldata _shirt)
+        external
+        onlyOwner
+    {
+        defaultShirt = _shirt;
+    }
+
+    /**
+     * @notice Update the default glasses.
+     */
+    function setDefaultGlasses(IOpenWearables.WearableData calldata _glasses)
+        external
+        onlyOwner
+    {
+        defaultGlasses = _glasses;
+    }
 
     /**
      * @notice Return the list of wearables selected for a given tokenId.
@@ -202,40 +224,60 @@ contract FFNDescriptor is Ownable {
         IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
         // Final string of all our rects
         string memory rects;
+
+        // Default shirt is the very first item included.
+        bytes[] memory rleShirt = new bytes[](1);
+        rleShirt[0] = defaultShirt.rleData;
+        rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
+            rleShirt,
+            defaultShirt.palette
+        )));
         
-        for (uint256 i = 0; i < wearableRefs.length; i++) {
+        // Plus one to make sure we get to the head
+        for (uint256 i = 0; i < wearableRefs.length + 1; i++) {
             // At index of the head position, insert rect and increment `_rectIndex`
-            if (i == headPosition[tokenId]) {
+            if (i == headPositions[tokenId]) {
                 // Head
                 // TODO: We can optimize this by not forcing it into an array,
                 // we'd just need to adjust _generateSVGRects to take single param
-                bytes[] memory rle = new bytes[](1);
-                rle[0] = nounDescriptor.heads(seed.head);
+                bytes[] memory rleHead = new bytes[](1);
+                rleHead[0] = nounDescriptor.heads(seed.head);
                 rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
-                    rle,
+                    rleHead,
                     nounsPalette
                 )));
-            }
 
-            // Confirm FFN ownership of WearableRef token
-            IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
-            // If user doesn't own wearable, delete it from state and skip it
-            address owner = fastFoodNouns.ownerOf(tokenId);
-            // TODO: Support `ownerOf` as well
-            if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
-                delete wearableRefs[i].tokenId;
-                continue;
+                // Glasses
+                bytes[] memory rleGlasses = new bytes[](1);
+                rleGlasses[0] = defaultGlasses.rleData;
+                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
+                    rleGlasses,
+                    defaultGlasses.palette
+                )));
             }
-
-            // Ownership confirmed, fetch WearableData from contract and insert rect
-            IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId, owner);
-            bytes[] memory rle = new bytes[](1);
-            rle[0] = _wearableData.rleData;
             
-            rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
-                rle,
-                _wearableData.palette
-            )));
+            // If we have a wearable here, combine it in
+            if (wearableRefs.length > i) {
+                // Confirm FFN ownership of WearableRef token
+                IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
+                // If user doesn't own wearable, delete it from state and skip it
+                address owner = fastFoodNouns.ownerOf(tokenId);
+                // TODO: Support `ownerOf` as well
+                if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
+                    delete wearableRefs[i].tokenId;
+                    continue;
+                }
+
+                // Ownership confirmed, fetch WearableData from contract and insert rect
+                IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId, owner);
+                bytes[] memory rle = new bytes[](1);
+                rle[0] = _wearableData.rleData;
+                
+                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
+                    rle,
+                    _wearableData.palette
+                )));
+            }
             
         }
 
@@ -354,6 +396,8 @@ library MultiPartRLEToSVG {
                     buffer[cursor] = lookup[rect.length];          // width
                     buffer[cursor + 1] = lookup[currentX];         // x
                     buffer[cursor + 2] = lookup[currentY];         // y
+                    // TODO: technically we could just have this reference the
+                    // Nouns descriptor to avoid upload all those palettes.
                     buffer[cursor + 3] = palette[rect.colorIndex]; // color
 
                     cursor += 4;

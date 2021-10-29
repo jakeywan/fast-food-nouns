@@ -310,7 +310,7 @@ async function main() {
   console.log('Minted tokens')
 
 
-  //==========================UPDATE DESCRIPTOR VALUES=========================
+  //==========================UPDATE DESCRIPTOR VALUES=======================
 
   // Set the FastFoodNouns contract to point at our custom FFNDescriptor
   // IMPORTANT: this can only happen after our mints, because the Fast Food Nouns
@@ -335,11 +335,14 @@ async function main() {
   console.log('Token uri for tokenId 0: ', tokenURI)
 
 
-  //=================================WEARABLES================================
+  //=================================WEARABLES===============================
 
   // Point our descriptor at the test FFN contract (instead of the live one)
   // so that ownership checks return properly
   await ffnDescriptor.updateFFNContract(nounsToken.address);
+
+  await nounsToken.wearClothes(0, [])
+  console.log('Took off FF Hat')
 
   // Mint first wearables
   const wearable = {
@@ -352,6 +355,24 @@ async function main() {
     gasLimit: 550000
   })
   console.log('Minted wearables')
+
+  // Update default wearables
+  const defaultShirt = {
+    name: 'Fast Food Uniform',
+    rleData: '0x0015171f090e020e020e020702010301020103040202020100030201030102010301020103030202020100030205030302020201000b02020201000b02020201000b02020201000b02020201000b02',
+    palette: [ "", "000000", "e11833", "eed811" ],
+    gridSize: 32
+  }
+  await ffnDescriptor.setDefaultShirt(defaultShirt)
+
+  const defaultGlasses = {
+    name: 'Fast Food Glasses',
+    rleData: '0x000b17100703000602010006020300010202030201010201000102020302010102040202030201030202030201010201020200010202030201010201000102020302010102010202000102020302010102010001020203020101020300060201000602',
+    palette: [ "", "000000", "e11833", "ffffff" ],
+    gridSize: 32
+  }
+  await ffnDescriptor.setDefaultGlasses(defaultGlasses)
+  console.log('Defaults set')
 
   // Confirm ownership of wearables
   const numOwned = await wearablesContract.balanceOf(deployer.address, 0)
@@ -366,11 +387,11 @@ async function main() {
   console.log('Upgraded token')
 
   // Put the new FFN shirt on token 0
-  await ffnDescriptor.wearWearables(0, [{
-      contractAddress: wearablesContract.address,
-      tokenId: 0
-  }])
-  console.log('Wearing gremplin shirt')
+  // await ffnDescriptor.wearWearables(0, 1, [{
+  //     contractAddress: wearablesContract.address,
+  //     tokenId: 0
+  // }])
+  // console.log('Wearing gremplin shirt')
 
   // Get the wearablels for tokenId 0 to confirm
   const wearing = await ffnDescriptor.getWearableRefsForTokenId(0)
