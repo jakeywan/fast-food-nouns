@@ -41,9 +41,6 @@ contract FFNDescriptor is Ownable {
     // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
     bytes32 constant COPYRIGHT_CC0_1_0_UNIVERSAL_LICENSE = 0xa2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499;
 
-    // Nouns color palette (just storing the one array, not a mapping)
-    string[] public nounsPalette;
-
     // Track whether a given tokenId has opted into the new wearables system
     bool[1000] public hasUpgraded;
 
@@ -103,7 +100,6 @@ contract FFNDescriptor is Ownable {
 
     /**
      * @notice Wear wearables.
-     * TODO: I think we also need to include and update head position here.
      */
     function wearWearables(
         uint256 tokenId,
@@ -183,27 +179,10 @@ contract FFNDescriptor is Ownable {
 
     /**
      * @notice Update the official Noun descriptor in case it's moved or updated.
-     * @dev For legacy FFNs, and to render heads.
+     * @dev For legacy FFNs, and to render heads and backgrounds.
      */
     function setNounDescriptor(INounsDescriptor _descriptor) external onlyOwner {
         nounDescriptor = _descriptor;
-    }
-
-    /**
-     * @notice Add colors to nounsPalette.
-     * @dev For legacy FFNs, and to render heads.
-     */
-    function addManyColorsToNounsPalette(string[] calldata newColors) external onlyOwner {
-        for (uint256 i = 0; i < newColors.length; i++) {
-            addColorToPalette(newColors[i]);
-        }
-    }
-
-    /**
-     * @notice Add a single color to a color palette.
-     */
-    function addColorToPalette(string calldata _color) public onlyOwner {
-        nounsPalette.push(_color);
     }
 
     /**
@@ -228,12 +207,13 @@ contract FFNDescriptor is Ownable {
         // Default shirt is the very first item included.
         bytes[] memory rleShirt = new bytes[](1);
         rleShirt[0] = defaultShirt.rleData;
-        rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
+        string[] memory shirtPalette = defaultShirt.palette; // convert storage to memory
+        rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
             rleShirt,
-            defaultShirt.palette
+            shirtPalette
         )));
         
-        // Plus one to make sure we get to the head
+        // Loop over wearables. Add one to make sure we get to the head and glasses.
         for (uint256 i = 0; i < wearableRefs.length + 1; i++) {
             // At index of the head position, insert rect and increment `_rectIndex`
             if (i == headPositions[tokenId]) {
@@ -242,17 +222,19 @@ contract FFNDescriptor is Ownable {
                 // we'd just need to adjust _generateSVGRects to take single param
                 bytes[] memory rleHead = new bytes[](1);
                 rleHead[0] = nounDescriptor.heads(seed.head);
-                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
+                string[] memory emptyPalette;
+                rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
                     rleHead,
-                    nounsPalette
+                    emptyPalette
                 )));
 
                 // Glasses
                 bytes[] memory rleGlasses = new bytes[](1);
                 rleGlasses[0] = defaultGlasses.rleData;
-                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRects(
+                string[] memory glassesPalette = defaultGlasses.palette; // convert storage to memory
+                rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
                     rleGlasses,
-                    defaultGlasses.palette
+                    glassesPalette
                 )));
             }
             
@@ -272,8 +254,7 @@ contract FFNDescriptor is Ownable {
                 IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId, owner);
                 bytes[] memory rle = new bytes[](1);
                 rle[0] = _wearableData.rleData;
-                
-                rects = string(abi.encodePacked(rects, MultiPartRLEToSVG._generateSVGRectsMemoryPalette(
+                rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
                     rle,
                     _wearableData.palette
                 )));
@@ -281,14 +262,7 @@ contract FFNDescriptor is Ownable {
             
         }
 
-        return Base64.encode(abi.encodePacked(
-                '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
-                '<rect width="100%" height="100%" fill="#', nounDescriptor.backgrounds(seed.background), '" />',
-                rects,
-                '</svg>'
-            )
-        );
-
+        return RenderingEngine._composeSVGParts(rects, nounDescriptor.backgrounds(seed.background));
     }
 
     /**
@@ -305,12 +279,10 @@ contract FFNDescriptor is Ownable {
         _parts[2] = nounDescriptor.heads(seed.head);
         _parts[3] = nounDescriptor.glasses(seed.glasses);
 
-        MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
-            parts: _parts,
-            background: nounDescriptor.backgrounds(seed.background)
-        });
+        string[] memory emptyPalette;
+        string memory rects = RenderingEngine._generateSVGRects(_parts, emptyPalette);
         
-        return NFTDescriptor.generateSVGImage(params, nounsPalette);
+        return RenderingEngine._composeSVGParts(rects, nounDescriptor.backgrounds(seed.background));
     }
 
     /**
@@ -322,11 +294,7 @@ contract FFNDescriptor is Ownable {
 
 }
 
-library MultiPartRLEToSVG {
-    struct SVGParams {
-        bytes[] parts;
-        string background;
-    }
+library RenderingEngine {
 
     struct ContentBounds {
         uint8 top;
@@ -347,33 +315,35 @@ library MultiPartRLEToSVG {
     }
 
     /**
-     * @notice Given RLE image parts and color palettes, merge to generate a single SVG image.
+     * @notice Given a string of interior SVG parts and a background, compose
+     * and encode the final SVG.
      */
-    function generateSVG(SVGParams memory params, string[] storage palette)
+    function _composeSVGParts(string memory rects, string memory background)
         internal
         view
-        returns (string memory svg)
+        returns(string memory)
     {
-        // prettier-ignore
-        return string(
-            abi.encodePacked(
-                '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
-                '<rect width="100%" height="100%" fill="#', params.background, '" />',
-                _generateSVGRects(params.parts, palette),
-                '</svg>'
-            )
-        );
+        return Base64.encode(abi.encodePacked(
+            '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
+            '<rect width="100%" height="100%" fill="#', background, '" />',
+            rects,
+            '</svg>'
+        ));
     }
 
     /**
      * @notice Given RLE image parts and color palettes, generate SVG rects.
+     * @dev This function will fallback to using the Nouns contract as palette
+     * if an empty palette is supplied to it.
+     * TODO: we should pass the Nouns descriptor contract address in explicitly,
+     * in case they move it and we want to keep it updated.
      */
-    // prettier-ignore
-    function _generateSVGRects(bytes[] memory parts, string[] storage palette)
+    function _generateSVGRects(bytes[] memory parts, string[] memory palette)
         internal
         view
         returns (string memory svg)
     {
+        INounsDescriptor nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
         string[33] memory lookup = [
             '0', '10', '20', '30', '40', '50', '60', '70', 
             '80', '90', '100', '110', '120', '130', '140', '150', 
@@ -396,67 +366,14 @@ library MultiPartRLEToSVG {
                     buffer[cursor] = lookup[rect.length];          // width
                     buffer[cursor + 1] = lookup[currentX];         // x
                     buffer[cursor + 2] = lookup[currentY];         // y
-                    // TODO: technically we could just have this reference the
-                    // Nouns descriptor to avoid upload all those palettes.
-                    buffer[cursor + 3] = palette[rect.colorIndex]; // color
-
-                    cursor += 4;
-
-                    if (cursor >= 16) {
-                        part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
-                        cursor = 0;
+                    // If palette passed is empty, use the default Nouns palette
+                    if (palette.length == 0) {
+                        buffer[cursor + 3] = nounDescriptor.palettes(0, rect.colorIndex); // color
+                    } else {
+                        buffer[cursor + 3] = palette[rect.colorIndex];
                     }
-                }
-
-                currentX += rect.length;
-                if (currentX == image.bounds.right) {
-                    currentX = image.bounds.left;
-                    currentY++;
-                }
-            }
-
-            if (cursor != 0) {
-                part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
-            }
-            rects = string(abi.encodePacked(rects, part));
-        }
-        return rects;
-    }
-
-    /**
-     * @notice Given RLE image parts and color palettes, generate SVG rects.
-     * @dev This is a functional duplicate of the above, but takes a `memory`
-     * palette (bec we fetch from external contract) instead of `storage` palette.
-     */
-    // prettier-ignore
-    function _generateSVGRectsMemoryPalette(bytes[] memory parts, string[] memory palette)
-        internal
-        view
-        returns (string memory svg)
-    {
-        string[33] memory lookup = [
-            '0', '10', '20', '30', '40', '50', '60', '70', 
-            '80', '90', '100', '110', '120', '130', '140', '150', 
-            '160', '170', '180', '190', '200', '210', '220', '230', 
-            '240', '250', '260', '270', '280', '290', '300', '310',
-            '320' 
-        ];
-        string memory rects;
-        for (uint8 p = 0; p < parts.length; p++) {
-            DecodedImage memory image = _decodeRLEImage(parts[p]);
-            uint256 currentX = image.bounds.left;
-            uint256 currentY = image.bounds.top;
-            uint256 cursor;
-            string[16] memory buffer;
-
-            string memory part;
-            for (uint256 i = 0; i < image.rects.length; i++) {
-                Rect memory rect = image.rects[i];
-                if (rect.colorIndex != 0) {
-                    buffer[cursor] = lookup[rect.length];          // width
-                    buffer[cursor + 1] = lookup[currentX];         // x
-                    buffer[cursor + 2] = lookup[currentY];         // y
-                    buffer[cursor + 3] = palette[rect.colorIndex]; // color
+                    
+                    
 
                     cursor += 4;
 
@@ -517,25 +434,5 @@ library MultiPartRLEToSVG {
             cursor++;
         }
         return DecodedImage({ paletteIndex: paletteIndex, bounds: bounds, rects: rects });
-    }
-}
-
-library NFTDescriptor {
-    struct TokenURIParams {
-        string name;
-        string description;
-        bytes[] parts;
-        string background;
-    }
-
-    /**
-     * @notice Generate an SVG image for use in the ERC721 token URI.
-     */
-    function generateSVGImage(MultiPartRLEToSVG.SVGParams memory params, string[] storage palette)
-        internal
-        view
-        returns (string memory svg)
-    {
-        return Base64.encode(bytes(MultiPartRLEToSVG.generateSVG(params, palette)));
     }
 }
