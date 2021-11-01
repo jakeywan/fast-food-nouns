@@ -94,6 +94,9 @@ async function main() {
   // await nounsToken.wearClothes(0, [])
   // console.log('Took off FF Hat')
 
+  await wearablesContract.setMintingStatus(3)
+  console.log('Opened minting status')
+
   // Mint first wearables
   const wearable = {
     name: 'Gremplin Stains',

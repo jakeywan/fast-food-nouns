@@ -19,12 +19,19 @@ pragma solidity ^0.8.6;
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import { Base64 } from 'base64-sol/base64.sol';
+import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import 'hardhat/console.sol';
 
 contract FFNWearables is ERC1155, Ownable {
 
     // The internal tokenId tracker
     uint256 private _currentId;
+
+    // Minting whitelist (only used when mintingStatus == WhiteListOnly)
+    mapping(address => bool) public whitelist;
+
+    enum Status { Paused, FFNsOnly, WhitelistOnly, Open }
+    Status public mintingStatus;
 
     // TODO: import this from IOpenWearables.sol
     struct WearableData {
@@ -35,6 +42,9 @@ contract FFNWearables is ERC1155, Ownable {
     }
 
     WearableData[] public wearableDataByTokenId;
+
+    // Reference to Nouns contract, using to check ownership
+    IERC721 public fastFoodNouns = IERC721(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
 
     event WearableMinted(uint256 indexed tokenId, address indexed creator);
 
@@ -59,8 +69,19 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Mint an `amount` of tokens to sender and save WearableData to state.
      * @dev Can only be called by a whitelisted creator address.
      */
-    function mint(uint256 amount, WearableData memory _wearableData) public onlyOwner {
-        // TODO: Require msg.sender has a mint pass or is whitelisted
+    function mint(uint256 amount, WearableData memory _wearableData) external onlyOwner {
+
+        if (mintingStatus == Status.Paused) {
+            revert("Minting paused.");
+        }
+        
+        if (mintingStatus == Status.WhitelistOnly) {
+            require(whitelist[msg.sender], "Not whitelisted.");
+        }
+
+        if (mintingStatus == Status.FFNsOnly) {
+            require(fastFoodNouns.balanceOf(msg.sender) > 0, "Not an FFN holder.");
+        }
 
         // Mint and save data
         _mint(msg.sender, _currentId, amount, "");
@@ -72,7 +93,7 @@ contract FFNWearables is ERC1155, Ownable {
     /**
      * @notice Compose image and return tokenURI.
      */
-    function tokenURI(uint256 tokenId) public view returns (string memory) {
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
         string memory base64SVG = generateSVGImage(tokenId);
         string memory name = wearableDataByTokenId[tokenId].name;
         string memory description = 'TODO';
@@ -95,8 +116,32 @@ contract FFNWearables is ERC1155, Ownable {
         return NFTDescriptor.generateSVGImage(params, wearableDataByTokenId[tokenId].palette);
     }
 
+    /**
+     * @notice This contract may become open for all to mint, but the DAO keeps
+     * the right to ban offensive designs. We're not burning these because it's
+     * not as cost-effective. Use the burn mechanism if you want to do that.
+     */
+    function banToken(uint256 tokenId) external onlyOwner {
+        delete wearableDataByTokenId[tokenId];
+    }
+
+    /**
+     * @notice Burn tokens with a specific tokenId held by a specific address.
+     */
+    function burn(address account, uint256 tokenId, uint256 amount) external onlyOwner {
+        _burn(account, tokenId, amount);
+    }
+
+    /**
+     * @notice Sets minting status, takes uint that refers to Status enum (0 indexed).
+     */
+    function setMintingStatus(Status _status) external onlyOwner {
+        mintingStatus = _status;
+    }
+
 }
 
+// TODO: Update this to match descriptor
 library MultiPartRLEToSVG {
     struct SVGParams {
         bytes[] parts;
