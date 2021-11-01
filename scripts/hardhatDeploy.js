@@ -91,32 +91,21 @@ async function main() {
   // so that ownership checks return properly
   await ffnDescriptor.updateFFNContract(nounsToken.address);
 
-  // await nounsToken.wearClothes(0, [])
-  // console.log('Took off FF Hat')
+  await nounsToken.wearClothes(0, [])
+  console.log('Took off FF Hat')
 
   await wearablesContract.setMintingStatus(3)
   console.log('Opened minting status')
 
   // Mint first wearables
-  const wearable = {
-    name: 'Gremplin Stains',
-    rleData: '0x0015171f090e020e02020201030302020406020102030302020204010202050302010201030100010301020104010201040102030502020202010004020104020202050202020201000702010503020202010002020105080202020100040201040602020201000b02020201000b02',
-    palette: ["", "000000", "ede7ce", "ddd1a0", "c15927", "e0c12e"],
-    gridSize: 32
-  }
-  await wearablesContract.mint(10, wearable, {
-    gasLimit: 550000
-  })
-  console.log('Minted wearables')
-
-  // Update default wearables
   const defaultShirt = {
     name: 'Fast Food Uniform',
     rleData: '0x0015171f090e020e020e020702010301020103040202020100030201030102010301020103030202020100030205030302020201000b02020201000b02020201000b02020201000b02020201000b02',
     palette: [ "", "000000", "e11833", "eed811" ],
     gridSize: 32
   }
-  await ffnDescriptor.setDefaultShirt(defaultShirt)
+  await wearablesContract.mint(1, defaultShirt)
+  console.log('Minted shirt')
 
   const defaultGlasses = {
     name: 'Fast Food Glasses',
@@ -124,9 +113,28 @@ async function main() {
     palette: [ "", "000000", "e11833", "ffffff" ],
     gridSize: 32
   }
-  await ffnDescriptor.setDefaultGlasses(defaultGlasses)
-  console.log('Defaults set')
+  await wearablesContract.mint(1, defaultGlasses)
+  console.log('Minted glasses')
 
+  const gremplin = {
+    name: 'Gremplin Stains',
+    rleData: '0x0015171f090e020e02020201030302020406020102030302020204010202050302010201030100010301020104010201040102030502020202010004020104020202050202020201000702010503020202010002020105080202020100040201040602020201000b02020201000b02',
+    palette: ["", "000000", "ede7ce", "ddd1a0", "c15927", "e0c12e"],
+    gridSize: 32
+  }
+  await wearablesContract.mint(10, gremplin, {
+    gasLimit: 550000
+  })
+  console.log('Minted Gremplin shirt')
+
+  await wearablesContract.toggleOpenMintWearable(0)
+  await wearablesContract.toggleOpenMintWearable(1)
+
+  console.log('Set first 2 wearables to free')
+
+  const isOpen = wearablesContract.openMintWearables(0)
+  console.log('is minting open for 0?', isOpen)
+  
   // Confirm ownership of wearables
   const numOwned = await wearablesContract.balanceOf(deployer.address, 0)
   console.log('Number of wearable owned: ', numOwned)
@@ -140,10 +148,10 @@ async function main() {
   console.log('Upgraded token')
 
   // Put the new FFN shirt on token 0
-  await ffnDescriptor.wearWearables(0, 1, [{
-      contractAddress: wearablesContract.address,
-      tokenId: 0
-  }])
+  // await ffnDescriptor.wearWearables(0, 1, [{
+  //     contractAddress: wearablesContract.address,
+  //     tokenId: 0
+  // }])
   console.log('Wearing gremplin shirt')
 
   // Get the wearablels for tokenId 0 to confirm

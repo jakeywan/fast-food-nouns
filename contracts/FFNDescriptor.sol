@@ -47,10 +47,6 @@ contract FFNDescriptor is Ownable {
     // Determines where in the stack the head is inserted per tokenId
     uint256[1000] public headPositions;
 
-    // Defaults we'll use for each FFN
-    IOpenWearables.WearableData public defaultShirt;
-    IOpenWearables.WearableData public defaultGlasses;
-
     // The state of what a given tokenId is wearing (tokenId => list of items worn)
     mapping(uint256 => IOpenWearables.WearableRef[]) public wearableRefsByTokenId;
 
@@ -147,26 +143,6 @@ contract FFNDescriptor is Ownable {
     }
 
     /**
-     * @notice Update the default shirt.
-     */
-    function setDefaultShirt(IOpenWearables.WearableData calldata _shirt)
-        external
-        onlyOwner
-    {
-        defaultShirt = _shirt;
-    }
-
-    /**
-     * @notice Update the default glasses.
-     */
-    function setDefaultGlasses(IOpenWearables.WearableData calldata _glasses)
-        external
-        onlyOwner
-    {
-        defaultGlasses = _glasses;
-    }
-
-    /**
      * @notice Return the list of wearables selected for a given tokenId.
      */
     function getWearableRefsForTokenId(uint256 tokenId)
@@ -203,15 +179,6 @@ contract FFNDescriptor is Ownable {
         IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
         // Final string of all our rects
         string memory rects;
-
-        // Default shirt is the very first item included.
-        bytes[] memory rleShirt = new bytes[](1);
-        rleShirt[0] = defaultShirt.rleData;
-        string[] memory shirtPalette = defaultShirt.palette; // convert storage to memory
-        rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
-            rleShirt,
-            shirtPalette
-        )));
         
         // Loop over wearables. Add one to make sure we get to the head and glasses.
         for (uint256 i = 0; i < wearableRefs.length + 1; i++) {
@@ -226,15 +193,6 @@ contract FFNDescriptor is Ownable {
                 rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
                     rleHead,
                     emptyPalette
-                )));
-
-                // Glasses
-                bytes[] memory rleGlasses = new bytes[](1);
-                rleGlasses[0] = defaultGlasses.rleData;
-                string[] memory glassesPalette = defaultGlasses.palette; // convert storage to memory
-                rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
-                    rleGlasses,
-                    glassesPalette
                 )));
             }
             

@@ -20,6 +20,7 @@ import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import 'hardhat/console.sol';
 
 contract FFNWearables is ERC1155, Ownable {
@@ -33,15 +34,11 @@ contract FFNWearables is ERC1155, Ownable {
     enum Status { Paused, FFNsOnly, WhitelistOnly, Open }
     Status public mintingStatus;
 
-    // TODO: import this from IOpenWearables.sol
-    struct WearableData {
-        string name;
-        bytes rleData;
-        string[] palette;
-        uint256 gridSize;
-    }
+    // Holds WearableData per tokenId
+    IOpenWearables.WearableData[] public wearableDataByTokenId;
 
-    WearableData[] public wearableDataByTokenId;
+    // Specifies which tokenIds which are open to mint. tokenId => isOpenToMint
+    mapping(uint256 => bool) public openMintWearables;
 
     // Reference to Nouns contract, using to check ownership
     IERC721 public fastFoodNouns = IERC721(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
@@ -58,7 +55,7 @@ contract FFNWearables is ERC1155, Ownable {
      */
     function openWearable(uint256 tokenId, address owner)
         external
-        returns (WearableData memory)
+        returns (IOpenWearables.WearableData memory)
     {
         require(balanceOf(owner, tokenId) > 0, "Wearable not owned.");
 
@@ -69,7 +66,7 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Mint an `amount` of tokens to sender and save WearableData to state.
      * @dev Can only be called by a whitelisted creator address.
      */
-    function mint(uint256 amount, WearableData memory _wearableData) external onlyOwner {
+    function mint(uint256 amount, IOpenWearables.WearableData memory _wearableData) external {
 
         if (mintingStatus == Status.Paused) {
             revert("Minting paused.");
@@ -88,6 +85,24 @@ contract FFNWearables is ERC1155, Ownable {
         wearableDataByTokenId.push(_wearableData);
 
         emit WearableMinted(_currentId++, msg.sender);
+    }
+
+    /**
+     * @notice Let anyone mint from our available open mints.
+     */
+    function mintOpenWearable(uint256 tokenId) external {
+        require(openMintWearables[tokenId], "Wearable not free.");
+        require(bytes(wearableDataByTokenId[tokenId].name).length > 0, "No token data.");
+
+        _mint(msg.sender, tokenId, 1, "");
+        emit WearableMinted(tokenId, msg.sender);
+    }
+
+    /**
+     * @notice Toggle whether a specific wearable should be open mint.
+     */
+    function toggleOpenMintWearable(uint256 tokenId) external onlyOwner {
+        openMintWearables[tokenId] = !openMintWearables[tokenId];
     }
 
     /**
