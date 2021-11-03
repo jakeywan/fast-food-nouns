@@ -87,9 +87,10 @@ async function main() {
 
   //=================================WEARABLES===============================
 
-  // Point our descriptor at the test FFN contract (instead of the live one)
-  // so that ownership checks return properly
+  // Point our contracts at the test version of FFN token
   await ffnDescriptor.updateFFNContract(nounsToken.address);
+  await wearablesContract.updateFFNContract(nounsToken.address);
+  console.log('Pointing at test FF Nouns token contract')
 
   await nounsToken.wearClothes(0, [])
   console.log('Took off FF Hat')
@@ -127,12 +128,17 @@ async function main() {
   })
   console.log('Minted Gremplin shirt')
 
+  await wearablesContract.mintBaseWearables(0)
+  console.log('Minted base wearables')
+
+
+
   await wearablesContract.toggleOpenMintWearable(0)
   await wearablesContract.toggleOpenMintWearable(1)
 
   console.log('Set first 2 wearables to free')
 
-  const isOpen = wearablesContract.openMintWearables(0)
+  const isOpen = await wearablesContract.openMintWearables(0)
   console.log('is minting open for 0?', isOpen)
   
   // Confirm ownership of wearables
@@ -140,7 +146,7 @@ async function main() {
   console.log('Number of wearable owned: ', numOwned)
 
   // Get tokenURI of wearable
-  const tokenURIWearable = await wearablesContract.tokenURI(0)
+  const tokenURIWearable = await wearablesContract.tokenURI(3)
   console.log('Wearable TokenURI: ', tokenURIWearable);
 
   // Upgrade our FFN to use the new design system
@@ -148,10 +154,20 @@ async function main() {
   console.log('Upgraded token')
 
   // Put the new FFN shirt on token 0
-  // await ffnDescriptor.wearWearables(0, 1, [{
-  //     contractAddress: wearablesContract.address,
-  //     tokenId: 0
-  // }])
+  await ffnDescriptor.wearWearables(0, 1, [
+    {
+      contractAddress: wearablesContract.address,
+      tokenId: 3
+    },
+    {
+      contractAddress: wearablesContract.address,
+      tokenId: 4
+    },
+    {
+      contractAddress: wearablesContract.address,
+      tokenId: 5
+    }
+])
   console.log('Wearing gremplin shirt')
 
   // Get the wearablels for tokenId 0 to confirm

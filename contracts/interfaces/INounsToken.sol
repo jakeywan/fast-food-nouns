@@ -38,4 +38,6 @@ interface INounsToken is IERC721 {
 
     function setSeeder(INounsSeeder seeder) external;
 
+    function seeds(uint256) external returns (uint48, uint48, uint48, uint48, uint48);
+
 }

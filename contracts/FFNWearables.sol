@@ -19,8 +19,9 @@ pragma solidity ^0.8.6;
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import { Base64 } from 'base64-sol/base64.sol';
-import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import { INounsToken } from './interfaces/INounsToken.sol';
 import { IOpenWearables } from './interfaces/IOpenWearables.sol';
+import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
 import 'hardhat/console.sol';
 
 contract FFNWearables is ERC1155, Ownable {
@@ -40,8 +41,21 @@ contract FFNWearables is ERC1155, Ownable {
     // Specifies which tokenIds which are open to mint. tokenId => isOpenToMint
     mapping(uint256 => bool) public openMintWearables;
 
+    // Tracks which base seed items have already been created as tokens in
+    // our system. seed number => our tokenId. tokenId 0 is going to be a base
+    // item, so we can expect it to be non-zero
+    mapping(uint256 => uint256) public mintedBodySeeds;
+    mapping(uint256 => uint256) public mintedAccessorySeeds;
+    mapping(uint256 => uint256) public mintedGlassesSeeds;
+
+    // True if FFN has already minted base wearables
+    bool[1000] public hasMintedBaseWearables;
+
     // Reference to Nouns contract, using to check ownership
-    IERC721 public fastFoodNouns = IERC721(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
+    INounsToken public fastFoodNouns = INounsToken(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
+
+    // Used to fetch base parts (head, background) and render non-opted-in FFNs
+    INounsDescriptor public nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
 
     event WearableMinted(uint256 indexed tokenId, address indexed creator);
 
@@ -152,6 +166,158 @@ contract FFNWearables is ERC1155, Ownable {
      */
     function setMintingStatus(Status _status) external onlyOwner {
         mintingStatus = _status;
+    }
+
+    /**
+     * @notice Let each FFN mint their current clothes, one time.
+     */
+    function mintBaseWearables(uint256 tokenId) external {
+        require(fastFoodNouns.ownerOf(tokenId) == msg.sender, "Not your FFN.");
+        require(!hasMintedBaseWearables[tokenId], "Already minted basics.");
+
+        // Get seeds for this FFN
+        (
+            uint48 background,
+            uint48 body,
+            uint48 accessory,
+            uint48 head,
+            uint48 glasses
+        ) = fastFoodNouns.seeds(tokenId);
+
+        // BODY
+        if (mintedBodySeeds[body] == 0) {
+            // Mint new item
+            _mint(msg.sender, _currentId, 1, "");
+            // Save this new data to state and push to wearableDataByTokenId
+            bytes memory rleData = nounDescriptor.bodies(body);
+            (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
+            wearableDataByTokenId.push(IOpenWearables.WearableData({
+                name: 'test',
+                rleData: newRleData,
+                palette: palette,
+                gridSize: 32
+            }));
+            emit WearableMinted(_currentId++, msg.sender);
+        } else {
+            // Increment existing item
+            _mint(msg.sender, mintedBodySeeds[body], 1, "");
+            emit WearableMinted(tokenId, msg.sender);
+        }
+
+        // ACCESSORY
+        // if (mintedAccessorySeeds[accessory] == 0) {
+        //     // Mint new item
+        //     _mint(msg.sender, _currentId, 1, "");
+        //     bytes memory rleData = nounDescriptor.accessories(accessory);
+        //     // Save this new data to state and push to wearableDataByTokenId
+        //     (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
+        //     wearableDataByTokenId.push(IOpenWearables.WearableData({
+        //         name: 'test',
+        //         rleData: newRleData,
+        //         palette: palette,
+        //         gridSize: 32
+        //     }));
+        //     emit WearableMinted(_currentId++, msg.sender);
+        // } else {
+        //     // Increment existing item
+        //     _mint(msg.sender, mintedAccessorySeeds[accessory], 1, "");
+        //     emit WearableMinted(tokenId, msg.sender);
+        // }
+
+        // GLASSES
+        // if (mintedGlassesSeeds[glasses] == 0) {
+        //     // Mint new item
+        //     _mint(msg.sender, _currentId, 1, "");
+        //     // Save this new data to state and push to wearableDataByTokenId
+        //     bytes memory rleData = nounDescriptor.glasses(body);
+        //     (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
+        //     wearableDataByTokenId.push(IOpenWearables.WearableData({
+        //         name: 'test',
+        //         rleData: newRleData,
+        //         palette: palette,
+        //         gridSize: 32
+        //     }));
+        //     emit WearableMinted(_currentId++, msg.sender);
+        // } else {
+        //     // Increment existing item
+        //     _mint(msg.sender, mintedGlassesSeeds[glasses], 1, "");
+        //     emit WearableMinted(tokenId, msg.sender);
+        // }
+
+        hasMintedBaseWearables[tokenId] = true;
+    }
+
+    /**
+     * @notice Builds a palette (assuming base Nouns palette) from an RLE.
+     * @dev This is an abbreviated version of `_decodeRLEImage`. If we change
+     * the palette, the rleData becomes incorrect (because it points to the wrong
+     * palette indexes). We need to fix this and rebuild the rleData as well.
+     */
+    function _rebuildRLE(bytes memory rleData) internal returns (bytes memory, string[] memory) {
+        bytes memory newRle = new bytes(rleData.length);
+
+        // Capture palette index and bounding values into newRle
+        newRle[0] = rleData[0];
+        newRle[1] = rleData[1];
+        newRle[2] = rleData[2];
+        newRle[3] = rleData[3];
+        newRle[4] = rleData[4];
+
+        // Calculate the number of unique colors
+        // Create an array w/ max size of 1/2 rleData, we won't fill every slot
+        bool[] memory haveSeenColorIndex = new bool[](rleData.length / 2);
+        uint256 uniqueColors;
+        for (uint256 i = 5; i < rleData.length - 5; i += 2) {
+            if (haveSeenColorIndex[uint8(rleData[i + 1])] == false) {
+                // If we haven't seen this pallete index, increment counter
+                uniqueColors++;
+                // Note that we've seen this index now
+                haveSeenColorIndex[uint8(rleData[i + 1])] = true;
+            }
+        }
+
+        // Make a new array the size of the number of uniqueColors
+        string[] memory palette = new string[](uniqueColors);
+        uint256 colorCounter = 1;
+        for (uint256 i = 5; i < rleData.length - 5; i += 2) {
+            // First, reinsert the first rle byte (length)
+            newRle[i] = rleData[i];
+            // Now insert updated palette index (and add color to index if we haven't)
+            string memory color = nounDescriptor.palettes(0, uint256(uint8(rleData[i + 1])));
+            // Loop through the colors and see if we've added this one yet
+            bool wasFound;
+            for (uint256 j = 0; j < palette.length; j++) {
+                // If we have added it, insert the j index as the newRle index
+                if (_compareStrings(color, (palette[j]))) {
+                    newRle[i + 1] = bytes1(uint8(j));
+                    wasFound = true;
+                    break;
+                }
+            }
+            if (!wasFound) {
+                // Add color to new palette at current colorCounter index
+                palette[colorCounter] = color;
+                // Insert the new updated palette index byte
+                newRle[i + 1] = bytes1(uint8(colorCounter));
+                colorCounter++;
+            }
+        }
+
+        return (newRle, palette);
+    }
+
+    /**
+     * @notice Utility to compare two strings.
+     */
+    function _compareStrings(string memory a, string memory b) internal view returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    /**
+     * @notice Update FFN contract.
+     */
+    function updateFFNContract(address _contract) external onlyOwner {
+        fastFoodNouns = INounsToken(_contract);
     }
 
 }
