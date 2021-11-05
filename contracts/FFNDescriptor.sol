@@ -295,6 +295,7 @@ library RenderingEngine {
         view
         returns (string memory svg)
     {
+        // TODO: will we ever want to update this?
         INounsDescriptor nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
         string[33] memory lookup = [
             '0', '10', '20', '30', '40', '50', '60', '70', 
