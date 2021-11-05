@@ -67,7 +67,7 @@ contract FFNWearables is ERC1155, Ownable {
      * not to bypass ownership checks. Doing otherwise is tantamount to bypassing
      * royalties or copyminting.
      */
-    function openWearable(uint256 tokenId, address owner)
+    function getWearable(uint256 tokenId, address owner)
         external
         returns (IOpenWearables.WearableData memory)
     {
@@ -123,26 +123,13 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Compose image and return tokenURI.
      */
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        string memory base64SVG = generateSVGImage(tokenId);
+        string memory base64SVG = RenderingEngine._composeSVGParts(wearableDataByTokenId[tokenId].innerSVG, "e1d7d5");
         string memory name = wearableDataByTokenId[tokenId].name;
         string memory description = 'TODO';
 
         string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
         
         return string(abi.encodePacked('data:application/json;base64,', json));
-    }
-    
-    /**
-     * @notice Generate an SVG image for a given wearable.
-     */
-    function generateSVGImage(uint256 tokenId) public view returns (string memory) {
-        bytes[] memory _parts = new bytes[](1);
-        _parts[0] = wearableDataByTokenId[tokenId].rleData;
-        MultiPartRLEToSVG.SVGParams memory params = MultiPartRLEToSVG.SVGParams({
-            parts: _parts,
-            background: "e1d7d5"
-        });
-        return NFTDescriptor.generateSVGImage(params, wearableDataByTokenId[tokenId].palette);
     }
 
     /**
@@ -188,14 +175,13 @@ contract FFNWearables is ERC1155, Ownable {
         if (mintedBodySeeds[body] == 0) {
             // Mint new item
             _mint(msg.sender, _currentId, 1, "");
-            // Save this new data to state and push to wearableDataByTokenId
-            bytes memory rleData = nounDescriptor.bodies(body);
-            (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
+            // Render and save wearable data for this tokenId
+            bytes[] memory _parts = new bytes[](1);
+            _parts[0] = nounDescriptor.bodies(body);
             wearableDataByTokenId.push(IOpenWearables.WearableData({
                 name: 'test',
-                rleData: newRleData,
-                palette: palette,
-                gridSize: 32
+                innerSVG: RenderingEngine._generateSVGRects(_parts),
+                size: 320
             }));
             emit WearableMinted(_currentId++, msg.sender);
         } else {
@@ -205,112 +191,44 @@ contract FFNWearables is ERC1155, Ownable {
         }
 
         // ACCESSORY
-        // if (mintedAccessorySeeds[accessory] == 0) {
-        //     // Mint new item
-        //     _mint(msg.sender, _currentId, 1, "");
-        //     bytes memory rleData = nounDescriptor.accessories(accessory);
-        //     // Save this new data to state and push to wearableDataByTokenId
-        //     (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
-        //     wearableDataByTokenId.push(IOpenWearables.WearableData({
-        //         name: 'test',
-        //         rleData: newRleData,
-        //         palette: palette,
-        //         gridSize: 32
-        //     }));
-        //     emit WearableMinted(_currentId++, msg.sender);
-        // } else {
-        //     // Increment existing item
-        //     _mint(msg.sender, mintedAccessorySeeds[accessory], 1, "");
-        //     emit WearableMinted(tokenId, msg.sender);
-        // }
+        if (mintedAccessorySeeds[accessory] == 0) {
+            // Mint new item
+            _mint(msg.sender, _currentId, 1, "");
+            // Render and save wearable data for this tokenId
+            bytes[] memory _parts = new bytes[](1);
+            _parts[0] = nounDescriptor.accessories(accessory);
+            wearableDataByTokenId.push(IOpenWearables.WearableData({
+                name: 'test',
+                innerSVG: RenderingEngine._generateSVGRects(_parts),
+                size: 320
+            }));
+            emit WearableMinted(_currentId++, msg.sender);
+        } else {
+            // Increment existing item
+            _mint(msg.sender, mintedAccessorySeeds[accessory], 1, "");
+            emit WearableMinted(tokenId, msg.sender);
+        }
 
         // GLASSES
-        // if (mintedGlassesSeeds[glasses] == 0) {
-        //     // Mint new item
-        //     _mint(msg.sender, _currentId, 1, "");
-        //     // Save this new data to state and push to wearableDataByTokenId
-        //     bytes memory rleData = nounDescriptor.glasses(body);
-        //     (bytes memory newRleData, string[] memory palette) = _rebuildRLE(rleData);
-        //     wearableDataByTokenId.push(IOpenWearables.WearableData({
-        //         name: 'test',
-        //         rleData: newRleData,
-        //         palette: palette,
-        //         gridSize: 32
-        //     }));
-        //     emit WearableMinted(_currentId++, msg.sender);
-        // } else {
-        //     // Increment existing item
-        //     _mint(msg.sender, mintedGlassesSeeds[glasses], 1, "");
-        //     emit WearableMinted(tokenId, msg.sender);
-        // }
+        if (mintedGlassesSeeds[glasses] == 0) {
+            // Mint new item
+            _mint(msg.sender, _currentId, 1, "");
+            // Render and save wearable data for this tokenId
+            bytes[] memory _parts = new bytes[](1);
+            _parts[0] = nounDescriptor.glasses(glasses);
+            wearableDataByTokenId.push(IOpenWearables.WearableData({
+                name: 'test',
+                innerSVG: RenderingEngine._generateSVGRects(_parts),
+                size: 320
+            }));
+            emit WearableMinted(_currentId++, msg.sender);
+        } else {
+            // Increment existing item
+            _mint(msg.sender, mintedGlassesSeeds[glasses], 1, "");
+            emit WearableMinted(tokenId, msg.sender);
+        }
 
         hasMintedBaseWearables[tokenId] = true;
-    }
-
-    /**
-     * @notice Builds a palette (assuming base Nouns palette) from an RLE.
-     * @dev This is an abbreviated version of `_decodeRLEImage`. If we change
-     * the palette, the rleData becomes incorrect (because it points to the wrong
-     * palette indexes). We need to fix this and rebuild the rleData as well.
-     */
-    function _rebuildRLE(bytes memory rleData) internal returns (bytes memory, string[] memory) {
-        bytes memory newRle = new bytes(rleData.length);
-
-        // Capture palette index and bounding values into newRle
-        newRle[0] = rleData[0];
-        newRle[1] = rleData[1];
-        newRle[2] = rleData[2];
-        newRle[3] = rleData[3];
-        newRle[4] = rleData[4];
-
-        // Calculate the number of unique colors
-        // Create an array w/ max size of 1/2 rleData, we won't fill every slot
-        bool[] memory haveSeenColorIndex = new bool[](rleData.length / 2);
-        uint256 uniqueColors;
-        for (uint256 i = 5; i < rleData.length - 5; i += 2) {
-            if (haveSeenColorIndex[uint8(rleData[i + 1])] == false) {
-                // If we haven't seen this pallete index, increment counter
-                uniqueColors++;
-                // Note that we've seen this index now
-                haveSeenColorIndex[uint8(rleData[i + 1])] = true;
-            }
-        }
-
-        // Make a new array the size of the number of uniqueColors
-        string[] memory palette = new string[](uniqueColors);
-        uint256 colorCounter = 1;
-        for (uint256 i = 5; i < rleData.length - 5; i += 2) {
-            // First, reinsert the first rle byte (length)
-            newRle[i] = rleData[i];
-            // Now insert updated palette index (and add color to index if we haven't)
-            string memory color = nounDescriptor.palettes(0, uint256(uint8(rleData[i + 1])));
-            // Loop through the colors and see if we've added this one yet
-            bool wasFound;
-            for (uint256 j = 0; j < palette.length; j++) {
-                // If we have added it, insert the j index as the newRle index
-                if (_compareStrings(color, (palette[j]))) {
-                    newRle[i + 1] = bytes1(uint8(j));
-                    wasFound = true;
-                    break;
-                }
-            }
-            if (!wasFound) {
-                // Add color to new palette at current colorCounter index
-                palette[colorCounter] = color;
-                // Insert the new updated palette index byte
-                newRle[i + 1] = bytes1(uint8(colorCounter));
-                colorCounter++;
-            }
-        }
-
-        return (newRle, palette);
-    }
-
-    /**
-     * @notice Utility to compare two strings.
-     */
-    function _compareStrings(string memory a, string memory b) internal view returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
     /**
@@ -322,12 +240,7 @@ contract FFNWearables is ERC1155, Ownable {
 
 }
 
-// TODO: Update this to match descriptor
-library MultiPartRLEToSVG {
-    struct SVGParams {
-        bytes[] parts;
-        string background;
-    }
+library RenderingEngine {
 
     struct ContentBounds {
         uint8 top;
@@ -348,33 +261,35 @@ library MultiPartRLEToSVG {
     }
 
     /**
-     * @notice Given RLE image parts and color palettes, merge to generate a single SVG image.
+     * @notice Given a string of interior SVG parts and a background, compose
+     * and encode the final SVG.
      */
-    function generateSVG(SVGParams memory params, string[] memory palette)
+    function _composeSVGParts(string memory rects, string memory background)
         internal
         view
-        returns (string memory svg)
+        returns(string memory)
     {
-        // prettier-ignore
-        return string(
-            abi.encodePacked(
-                '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
-                '<rect width="100%" height="100%" fill="#', params.background, '" />',
-                _generateSVGRects(params, palette),
-                '</svg>'
-            )
-        );
+        return Base64.encode(abi.encodePacked(
+            '<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">',
+            '<rect width="100%" height="100%" fill="#', background, '" />',
+            rects,
+            '</svg>'
+        ));
     }
 
     /**
      * @notice Given RLE image parts and color palettes, generate SVG rects.
+     * @dev This function will fallback to using the Nouns contract as palette
+     * if an empty palette is supplied to it.
+     * TODO: we should pass the Nouns descriptor contract address in explicitly,
+     * in case they move it and we want to keep it updated.
      */
-    // prettier-ignore
-    function _generateSVGRects(SVGParams memory params, string[] memory palette)
-        private
+    function _generateSVGRects(bytes[] memory parts)
+        internal
         view
         returns (string memory svg)
     {
+        INounsDescriptor nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
         string[33] memory lookup = [
             '0', '10', '20', '30', '40', '50', '60', '70', 
             '80', '90', '100', '110', '120', '130', '140', '150', 
@@ -383,8 +298,8 @@ library MultiPartRLEToSVG {
             '320' 
         ];
         string memory rects;
-        for (uint8 p = 0; p < params.parts.length; p++) {
-            DecodedImage memory image = _decodeRLEImage(params.parts[p]);
+        for (uint8 p = 0; p < parts.length; p++) {
+            DecodedImage memory image = _decodeRLEImage(parts[p]);
             uint256 currentX = image.bounds.left;
             uint256 currentY = image.bounds.top;
             uint256 cursor;
@@ -397,8 +312,9 @@ library MultiPartRLEToSVG {
                     buffer[cursor] = lookup[rect.length];          // width
                     buffer[cursor + 1] = lookup[currentX];         // x
                     buffer[cursor + 2] = lookup[currentY];         // y
-                    buffer[cursor + 3] = palette[rect.colorIndex]; // color
-
+                    // Use the default Nouns palette
+                    buffer[cursor + 3] = nounDescriptor.palettes(0, rect.colorIndex);
+                   
                     cursor += 4;
 
                     if (cursor >= 16) {
@@ -458,25 +374,5 @@ library MultiPartRLEToSVG {
             cursor++;
         }
         return DecodedImage({ paletteIndex: paletteIndex, bounds: bounds, rects: rects });
-    }
-}
-
-library NFTDescriptor {
-    struct TokenURIParams {
-        string name;
-        string description;
-        bytes[] parts;
-        string background;
-    }
-
-    /**
-     * @notice Generate an SVG image for use in the ERC721 token URI.
-     */
-    function generateSVGImage(MultiPartRLEToSVG.SVGParams memory params, string[] memory palette)
-        internal
-        view
-        returns (string memory svg)
-    {
-        return Base64.encode(bytes(MultiPartRLEToSVG.generateSVG(params, palette)));
     }
 }

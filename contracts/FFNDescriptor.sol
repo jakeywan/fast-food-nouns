@@ -189,10 +189,8 @@ contract FFNDescriptor is Ownable {
                 // we'd just need to adjust _generateSVGRects to take single param
                 bytes[] memory rleHead = new bytes[](1);
                 rleHead[0] = nounDescriptor.heads(seed.head);
-                string[] memory emptyPalette;
                 rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
-                    rleHead,
-                    emptyPalette
+                    rleHead
                 )));
             }
             
@@ -208,14 +206,11 @@ contract FFNDescriptor is Ownable {
                     continue;
                 }
 
+                // TODO: confirm it's a supported size?
+
                 // Ownership confirmed, fetch WearableData from contract and insert rect
-                IOpenWearables.WearableData memory _wearableData = wContract.openWearable(wearableRefs[i].tokenId, owner);
-                bytes[] memory rle = new bytes[](1);
-                rle[0] = _wearableData.rleData;
-                rects = string(abi.encodePacked(rects, RenderingEngine._generateSVGRects(
-                    rle,
-                    _wearableData.palette
-                )));
+                IOpenWearables.WearableData memory _wearableData = wContract.getWearable(wearableRefs[i].tokenId, owner);
+                rects = string(abi.encodePacked(rects, _wearableData.innerSVG));
             }
             
         }
@@ -237,8 +232,7 @@ contract FFNDescriptor is Ownable {
         _parts[2] = nounDescriptor.heads(seed.head);
         _parts[3] = nounDescriptor.glasses(seed.glasses);
 
-        string[] memory emptyPalette;
-        string memory rects = RenderingEngine._generateSVGRects(_parts, emptyPalette);
+        string memory rects = RenderingEngine._generateSVGRects(_parts);
         
         return RenderingEngine._composeSVGParts(rects, nounDescriptor.backgrounds(seed.background));
     }
@@ -296,7 +290,7 @@ library RenderingEngine {
      * TODO: we should pass the Nouns descriptor contract address in explicitly,
      * in case they move it and we want to keep it updated.
      */
-    function _generateSVGRects(bytes[] memory parts, string[] memory palette)
+    function _generateSVGRects(bytes[] memory parts)
         internal
         view
         returns (string memory svg)
@@ -324,15 +318,9 @@ library RenderingEngine {
                     buffer[cursor] = lookup[rect.length];          // width
                     buffer[cursor + 1] = lookup[currentX];         // x
                     buffer[cursor + 2] = lookup[currentY];         // y
-                    // If palette passed is empty, use the default Nouns palette
-                    if (palette.length == 0) {
-                        buffer[cursor + 3] = nounDescriptor.palettes(0, rect.colorIndex); // color
-                    } else {
-                        buffer[cursor + 3] = palette[rect.colorIndex];
-                    }
-                    
-                    
-
+                    // Use the default Nouns palette
+                    buffer[cursor + 3] = nounDescriptor.palettes(0, rect.colorIndex);
+                   
                     cursor += 4;
 
                     if (cursor >= 16) {

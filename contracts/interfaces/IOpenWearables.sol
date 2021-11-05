@@ -24,9 +24,8 @@ interface IOpenWearables {
 
     struct WearableData {
         string name;
-        bytes rleData;
-        string[] palette;
-        uint256 gridSize;
+        string innerSVG;
+        uint256 size;
     }
 
     struct WearableRef {
@@ -34,7 +33,7 @@ interface IOpenWearables {
         uint256 tokenId;
     }
 
-    function openWearable(uint256 tokenId, address owner) external returns (WearableData memory);
+    function getWearable(uint256 tokenId, address owner) external returns (WearableData memory);
 
     function ownerOf(uint256) external returns (address owner);
 
