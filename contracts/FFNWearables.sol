@@ -129,6 +129,7 @@ contract FFNWearables is ERC1155, Ownable {
     function mintOpenWearable(uint256 tokenId) external {
         require(openMintWearables[tokenId], "Wearable not free.");
         require(bytes(wearableDataByTokenId[tokenId].name).length > 0, "No token data.");
+        // TODO: require they own at least one FFN
 
         _mint(msg.sender, tokenId, 1, "");
         emit WearableMinted(tokenId, msg.sender);
@@ -283,17 +284,14 @@ contract FFNWearables is ERC1155, Ownable {
         
         // Body
         if (ref.partType == 0) {
-            console.log('body part');
             _parts[0] = nounDescriptor.bodies(ref.seed);
         }
         // Accessory
         if (ref.partType == 1) {
-            console.log('accessory part');
             _parts[0] = nounDescriptor.accessories(ref.seed);
         }
         // Glasses
         if (ref.partType == 2) {
-            console.log('glasses part');
             _parts[0] = nounDescriptor.glasses(ref.seed);
         }
 
