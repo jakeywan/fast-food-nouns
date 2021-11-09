@@ -25,7 +25,7 @@ import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import 'hardhat/console.sol';
 
-contract FFNDescriptor is Ownable {
+contract ArbisNouns is Ownable {
     using Strings for uint256;
 
     // Concatenated, then hashed, seed values to use as tokenId lookup table
