@@ -39,10 +39,11 @@ contract ArbisOracle {
     uint256 maxGas,
     uint256 gasPriceBid
   ) external returns (uint256) {
+      // TODO: what if this is non-existent? Does it revert properly?
       address memory owner = fastFoodNouns.ownerOf(tokenId);
 
       // TODO: I'm not sure if this is the right way to go from address -> bytes
-      bytes memory data = bytes(bytes20(owner));
+      bytes memory data = abi.encode(tokenId, owner);
       
       uint256 ticketID = inbox.createRetryableTicket{value: msg.value}(
           l2Target,
