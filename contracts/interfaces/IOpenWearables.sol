@@ -33,11 +33,11 @@ interface IOpenWearables {
         uint256 tokenId;
     }
 
-    function getWearable(uint256 tokenId, address owner) external returns (WearableData memory);
+    function getWearable(uint256 tokenId, address owner) external view returns (WearableData memory);
 
     function ownerOf(uint256) external returns (address owner);
 
-    function balanceOf(address,uint256) external returns (uint256);
+    function balanceOf(address,uint256) external view returns (uint256);
 
     function supportsInterface(bytes4) external returns (bool);
     

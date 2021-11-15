@@ -81,6 +81,7 @@ contract FFNWearables is ERC1155, Ownable {
      */
     function getWearable(uint256 tokenId, address owner)
         external
+        view
         returns (IOpenWearables.WearableData memory)
     {
         require(balanceOf(owner, tokenId) > 0, "Wearable not owned.");
@@ -276,7 +277,7 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Renders an innerSVG part from a `NounsPartReference`. We're relying
      * on this mechanism so we don't have to store extra innerSVGs in state.
      */
-    function renderNounsPartForTokenId(uint256 tokenId) public returns (string memory innerSVG) {
+    function renderNounsPartForTokenId(uint256 tokenId) public view returns (string memory innerSVG) {
         NounsPartRef storage ref = nounsPartRefsByTokenId[tokenId];
         
         // Render and save wearable data for this tokenId

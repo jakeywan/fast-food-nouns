@@ -18,8 +18,6 @@ pragma solidity ^0.8.6;
 
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
-import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
-import { INounsToken } from './interfaces/INounsToken.sol';
 import { INounsSeeder } from './interfaces/INounsSeeder.sol';
 import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { Base64 } from 'base64-sol/base64.sol';
@@ -131,7 +129,7 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
     /**
      * @notice Generate SVG for tokenId
      */
-    function generateSVGImage(uint256 tokenId) external returns (string memory) {
+    function generateSVGImage(uint256 tokenId) public view returns (string memory) {
 
         // Generate each rect individually, and then compose the SVG
         IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
@@ -143,19 +141,18 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
             // At index of the head position, insert rect and increment `_rectIndex`
             if (i == headPositions[tokenId]) {
                 // Head
-                rects = string(abi.encodePacked(rects, headSVGs[seed.head]));
+                rects = string(abi.encodePacked(rects, headSVGs[seeds[tokenId].head]));
             }
             
             // If we have a wearable here, combine it in
             if (wearableRefs.length > i) {
                 // Confirm FFN ownership of WearableRef token
                 IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
-                // If user doesn't own wearable, delete it from state and skip it
+                // If user doesn't own wearable, skip it
                 address owner = ownerOf(tokenId);
 
                 // TODO: Support `ownerOf` as well for ERC721?
                 if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
-                    delete wearableRefs[i].tokenId;
                     continue;
                 }
 
@@ -166,7 +163,7 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
             
         }
 
-        return _composeSVGParts(rects, backgrounds[seed.background]);
+        return _composeSVGParts(rects, backgrounds[seeds[tokenId].background]);
     }
 
     /**
@@ -192,7 +189,7 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
      */
     function _composeSVGParts(string memory rects, string memory background)
         internal
-        view
+        pure
         returns(string memory)
     {
         return Base64.encode(abi.encodePacked(
@@ -212,12 +209,11 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
         require(msg.sender == AddressAliasHelper.applyL1ToL2Alias(oracleAddress), "Not oracle");
 
         // Transfer Arbis Noun from current owner to new owner
-        (uint256 tokenId, address owner) = abi.decode(data, (uint256, address));
+        (uint256 tokenId, address owner) = abi.decode(bytes(data), (uint256, address));
 
         // If tokenId exists, transfer it. If not, mint it to the new owner.
         if (_exists(tokenId)) {
-            // NOTE: do i need the data param even though i don't need to send data?
-            _safeTransfer(ownerOf(tokenId), owner, tokenId);
+            safeTransferFrom(ownerOf(tokenId), owner, tokenId);
         } else {
             _mint(owner, tokenId);
         }

@@ -30,7 +30,11 @@ module.exports = {
       forking: {
         url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
       }
-    }
+    },
+    arbitrum: {
+      url: 'https://rinkeby.arbitrum.io/rpc',
+      accounts: [process.env.WALLET_PRIVATE_KEY]
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY
