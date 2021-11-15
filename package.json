@@ -10,10 +10,11 @@
   "scripts": {
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
     "deploy-arbitrum": "npx hardhat run --network arbitrum scripts/deployArbitrum.js",
+    "deploy-oracle": "npx hardhat run --network rinkeby scripts/deployOracle.js",
     "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
-    "verify-test": "npx hardhat verify --network rinkeby 0x73E5C1d945372B0af153e0AFE1FF16c99936ae7b"
+    "verify-test": "npx hardhat verify --network rinkeby 0x8BB2c2ea6F30c9b69d0e0AC7D4d76b24C8b28D94"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -21,6 +22,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.1.0",
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
+    "arb-ts": "^1.0.2",
     "base64-sol": "^1.1.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",

@@ -24,3 +24,8 @@ https://github.com/nounsDAO/nouns-monorepo/tree/soli-nouns-sdk/packages/nouns-as
 ## Notes
 * For our descriptor and clothing system, we should make it such that another project
  entirely (like a future "mutants" or "babies" FFNs) could use our clothing system
+
+
+ ## Contracts
+
+ Rinkeby FFN: https://rinkeby.etherscan.io/address/0x419ccff619e671dd772c0fc7326a5c0368ea751c

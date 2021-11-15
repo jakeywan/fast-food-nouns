@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// @title Fast Food Nouns Oracle
-/// @notice Broadcasts L1 `ownerOf` data to L2
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -30,7 +29,8 @@ contract FFNOracle is Ownable {
   // Address to send updates to
   address public arbisNounsContract;
 
-  IInbox public inbox;
+  // Arbitrum inbox contract (on Rinkeby)
+  IInbox public inbox = IInbox(0x578BAde599406A8fE3d24Fd7f7211c0911F5B29e);
 
   /**
    * @notice Send updated ownerOf data to Arbitrum.
@@ -64,10 +64,24 @@ contract FFNOracle is Ownable {
     }
 
   /**
-   * @notice Update FFN contract.
+   * @notice Update L1 FFN contract address.
    */
   function updateFFNContract(address _contract) external onlyOwner {
       fastFoodNouns = INounsToken(_contract);
+  }
+
+  /**
+   * @notice Update L2 oracle contract address.
+   */
+  function updateArbisNounsContract(address _contract) external onlyOwner {
+    arbisNounsContract = _contract;
+  }
+
+  /**
+   * @notice Update the Arbitrum relay inbox contract address.
+   */
+  function updateInboxContract(address _contract) external onlyOwner {
+    inbox = IInbox(_contract);
   }
 
 }
