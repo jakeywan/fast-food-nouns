@@ -28,4 +28,18 @@ https://github.com/nounsDAO/nouns-monorepo/tree/soli-nouns-sdk/packages/nouns-as
 
  ## Contracts
 
- Rinkeby FFN: https://rinkeby.etherscan.io/address/0x419ccff619e671dd772c0fc7326a5c0368ea751c
+ Rinkeby FFNs: 0x419ccff619e671dd772c0fc7326a5c0368ea751c
+ Arbitrum Rinkeby Arbis Nouns: 0xc77540882c27a0cf96061B64BeE92Fe5ef4F0453
+ Rinkeby Oracle: 0x669Ac6d70C5F40e31046bae2d9EB998476C41AE6
+
+
+ # Example inputs for update oracle call
+ .05
+
+0
+
+4272053229
+
+100000
+
+20087094

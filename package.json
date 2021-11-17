@@ -9,12 +9,13 @@
   "main": "src/index.ts",
   "scripts": {
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
-    "deploy-arbitrum": "npx hardhat run --network arbitrum scripts/deployArbitrum.js",
+    "deploy-arbis-nouns": "npx hardhat run --network arbitrum scripts/deployArbisNouns.js",
     "deploy-oracle": "npx hardhat run --network rinkeby scripts/deployOracle.js",
     "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
-    "verify-test": "npx hardhat verify --network rinkeby 0x8BB2c2ea6F30c9b69d0e0AC7D4d76b24C8b28D94"
+    "verify-test": "npx hardhat verify --network rinkeby 0x669Ac6d70C5F40e31046bae2d9EB998476C41AE6",
+    "query-arbitrum": "node scripts/queryArbitrum.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",

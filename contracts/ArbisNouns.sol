@@ -204,19 +204,26 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
      * @notice Transfers an Arbis Noun to its rightful L1 owner (and if it doesn't
      * exist, mints it to the rightful owner).
      */
-    function updateOwner(string calldata data) public {
+    function updateOwner(uint256 tokenId, address owner) public {
         // Verify that the sender is L1 oracle contract
         require(msg.sender == AddressAliasHelper.applyL1ToL2Alias(oracleAddress), "Not oracle");
 
-        // Transfer Arbis Noun from current owner to new owner
-        (uint256 tokenId, address owner) = abi.decode(bytes(data), (uint256, address));
+        // Make sure this tokenId is within valid range
+        require(tokenId <= 999, "Invalid token id");
 
         // If tokenId exists, transfer it. If not, mint it to the new owner.
-        if (_exists(tokenId)) {
-            safeTransferFrom(ownerOf(tokenId), owner, tokenId);
+        if (_exists(tokenId) == true) {
+            _transfer(ownerOf(tokenId), owner, tokenId);
         } else {
             _mint(owner, tokenId);
         }
+    }
+
+    /**
+     * @notice Updates address we'll expect oracle to send L1 messages from.
+     */
+    function updateOracle(address _contract) external onlyOwner {
+        oracleAddress = _contract;
     }
 
 }

@@ -44,8 +44,9 @@ contract FFNOracle is Ownable {
       // TODO: what if this is non-existent? Does it revert properly?
       address owner = fastFoodNouns.ownerOf(tokenId);
 
-      // TODO: I'm not sure if this is the right way to go from address -> bytes
-      bytes memory data = abi.encode(tokenId, owner);
+      // TODO: Working on this...
+      bytes4 selector = bytes4(keccak256("updateOwner(uint256,address)"));
+      bytes memory data = abi.encodeWithSelector(selector, tokenId, owner);
       
       uint256 ticketID = inbox.createRetryableTicket{value: msg.value}(
           arbisNounsContract,

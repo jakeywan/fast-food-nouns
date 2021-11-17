@@ -13,7 +13,7 @@ async function main() {
 
   // FOR RINKEBY
   await oracle.updateFFNContract('0x419ccff619e671dd772c0fc7326a5c0368ea751c')
-  await oracle.updateArbisNounsContract('0xc77e10614d33a1de721f047ea97307f434bcf210')
+  await oracle.updateArbisNounsContract('0xc77540882c27a0cf96061B64BeE92Fe5ef4F0453')
   console.log('Updated contract addresses')
 
   // UPDATE 0 TOKEN OWNERSHIP DATA
