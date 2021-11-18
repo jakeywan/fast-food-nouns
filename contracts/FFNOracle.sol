@@ -19,6 +19,7 @@ pragma solidity ^0.8.6;
 import { IInbox } from "./external/arbitrum/Inbox.sol";
 import { INounsToken } from './interfaces/INounsToken.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
+import "./external/arbitrum/AddressAliasHelper.sol";
 
 // example: https://github.com/OffchainLabs/arbitrum-tutorials/blob/master/packages/greeter/contracts/ethereum/GreeterL1.sol
 contract FFNOracle is Ownable {
@@ -44,12 +45,12 @@ contract FFNOracle is Ownable {
       // TODO: what if this is non-existent? Does it revert properly?
       address owner = fastFoodNouns.ownerOf(tokenId);
 
-      // TODO: Working on this...
+      // Encode data
       bytes4 selector = bytes4(keccak256("updateOwner(uint256,address)"));
       bytes memory data = abi.encodeWithSelector(selector, tokenId, owner);
       
       uint256 ticketID = inbox.createRetryableTicket{value: msg.value}(
-          arbisNounsContract,
+          AddressAliasHelper.applyL1ToL2Alias(arbisNounsContract),
           0,
           maxSubmissionCost,
           msg.sender,

@@ -28,10 +28,10 @@ https://github.com/nounsDAO/nouns-monorepo/tree/soli-nouns-sdk/packages/nouns-as
 
  ## Contracts
 
- Rinkeby FFNs: 0x419ccff619e671dd772c0fc7326a5c0368ea751c
- Arbitrum Rinkeby Arbis Nouns: 0xc77540882c27a0cf96061B64BeE92Fe5ef4F0453
- Rinkeby Oracle: 0x669Ac6d70C5F40e31046bae2d9EB998476C41AE6
-
+Rinkeby FFNs: 0x419ccff619e671dd772c0fc7326a5c0368ea751c
+Arbitrum Rinkeby Arbis Nouns: 0xc77540882c27a0cf96061B64BeE92Fe5ef4F0453
+Rinkeby Oracle: 0xDB13743795C0D90306085f714b63A0A7A9bf8fC3
+ArbRetryableTransaction: 0x000000000000000000000000000000000000006e
 
  # Example inputs for update oracle call
  .05

@@ -14,7 +14,7 @@ const queryArbitrum = async () => {
   let contract = new ethers.Contract(address, abi, wallet)
   
   // Functions
-  const totalSupply = await contract.totalSupply()
+  const totalSupply = await contract.ownerOf(0)
   console.log(totalSupply)
   
 }
