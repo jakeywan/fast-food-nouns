@@ -23,7 +23,6 @@ import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import { ERC721 } from '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import { ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
-import "./external/arbitrum/AddressAliasHelper.sol";
 import 'hardhat/console.sol';
 
 contract ArbisNouns is Ownable, ERC721Enumerable {
@@ -35,9 +34,6 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
     // Determines where in the stack the head is inserted per tokenId
     uint256[1000] public headPositions;
 
-    // Will be used to verify messages coming from L1 oracle
-    address public oracleAddress;
-
     // Given a seed, return a head SVG. Note that this won't be full, there aren't
     // 1000 different heads. TODO: make this number closer to the actual number we
     // need.
@@ -45,6 +41,9 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
 
     // Background hex colors
     string[2] public backgrounds;
+
+    // List of owners who can mint their nouns, per tokenId
+    address[1000] public snapshot;
 
     string public tokenDescription = 'Can I take your order? Arbis Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Arbis Noun.';
 
@@ -58,20 +57,6 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
         // Initialize background colors
         backgrounds[0] = 'd5d7e1';
         backgrounds[1] = 'e1d7d5';
-    }
-
-    /**
-     * @notice Update seed for an Arbis Noun
-     */
-    function updateSeed(INounsSeeder.Seed memory seed, uint256 tokenId) public onlyOwner {
-        seeds[tokenId] = seed;
-    }
-
-    /**
-     * @notice Update the head svg for a given seed number
-     */
-    function updateHeadSVG(uint256 seed, string memory svg) public onlyOwner {
-        headSVGs[seed] = svg;
     }
 
     /**
@@ -94,21 +79,9 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
         for (uint256 i = 0; i < wRefs.length; i++) {
             IOpenWearables wContract = IOpenWearables(wRefs[i].contractAddress);
             
-            // TODO: Also support ER721
-            // bool isOwner;
-            // Conditionally check interface support for ERC721 or ERC1155
-            // if (wContract.supportsInterface(bytes4(keccak256('ownerOf(uint256)')))) {
-            //     require(msg.sender == wContract.ownerOf(wRefs[i].tokenId), "Not your wearable.");
-            //     isOwner = true;
-            // }
-            // TODO: Why isn't this evaluating to true?
-            // if (wContract.supportsInterface(bytes4(keccak256('balanceOf(address,uint256)')))) {
-                require(wContract.balanceOf(msg.sender, tokenId) > 0, "Not your wearable.");
-                // isOwner = true;
-            // }
+            require(wContract.balanceOf(msg.sender, tokenId) > 0, "Not your wearable.");
 
             // Set WearableRef to state
-            // require(isOwner, "Not your wearable.");
             wearableRefsByTokenId[tokenId].push(wRefs[i]);
 
         }
@@ -151,7 +124,6 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
                 // If user doesn't own wearable, skip it
                 address owner = ownerOf(tokenId);
 
-                // TODO: Support `ownerOf` as well for ERC721?
                 if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
                     continue;
                 }
@@ -204,26 +176,54 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
      * @notice Transfers an Arbis Noun to its rightful L1 owner (and if it doesn't
      * exist, mints it to the rightful owner).
      */
-    function updateOwner(uint256 tokenId, address owner) public {
-        // Verify that the sender is L1 oracle contract
-        require(msg.sender == AddressAliasHelper.applyL1ToL2Alias(oracleAddress), "Not oracle");
+    function mint(uint256 tokenId) external {
+        // Mint token to snapshot address
+        _mint(snapshot[tokenId], tokenId);
+    }
 
-        // Make sure this tokenId is within valid range
-        require(tokenId <= 999, "Invalid token id");
-
-        // If tokenId exists, transfer it. If not, mint it to the new owner.
-        if (_exists(tokenId) == true) {
-            _transfer(ownerOf(tokenId), owner, tokenId);
-        } else {
-            _mint(owner, tokenId);
+    /**
+     * @notice Let user batch mint all their available Arbis Nouns at once
+     */
+    function mintAll() external {
+        for (uint256 i = 0; i < snapshot.length; i++) {
+            if (snapshot[i] == msg.sender) {
+                _mint(snapshot[i], i);
+            }
         }
     }
 
     /**
-     * @notice Updates address we'll expect oracle to send L1 messages from.
+     * @notice Check available mints
      */
-    function updateOracle(address _contract) external onlyOwner {
-        oracleAddress = _contract;
+    function checkNumberOfMintsAvailable(address owner) external returns (uint256) {
+        uint256 counter = 0;
+        for (uint256 i = 0; i < snapshot.length; i++) {
+            if (snapshot[i] == owner) {
+                counter++;
+            }
+        }
+        return counter;
+    }
+
+    /**
+     * @notice Update seed for an Arbis Noun
+     */
+    function updateSeed(INounsSeeder.Seed memory seed, uint256 tokenId) external onlyOwner {
+        seeds[tokenId] = seed;
+    }
+
+    /**
+     * @notice Update the head svg for a given seed number
+     */
+    function updateHeadSVG(uint256 seed, string memory svg) external onlyOwner {
+        headSVGs[seed] = svg;
+    }
+
+    /**
+     * @notice Update address to which the given tokenId will be minted
+     */
+    function updateSnapshot(uint256 tokenId, address owner) external onlyOwner {
+        snapshot[tokenId] = owner;
     }
 
 }
