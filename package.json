@@ -13,7 +13,7 @@
     "deploy-oracle": "npx hardhat run --network rinkeby scripts/deployOracle.js",
     "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
-    "deploy-local": "npx hardhat run --network localhost scripts/hardhatDeploy.js",
+    "deploy-local": "npx hardhat run --network localhost scripts/deployArbisNouns.js",
     "verify-test": "npx hardhat verify --network rinkeby 0xDB13743795C0D90306085f714b63A0A7A9bf8fC3",
     "query-arbitrum": "node scripts/queryArbitrum.js"
   },
