@@ -28,13 +28,18 @@ module.exports = {
     },
     hardhat: {
       forking: {
-        url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
+        // `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
+        url: `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
       }
     },
     arbitrum: {
       url: 'https://rinkeby.arbitrum.io/rpc',
       accounts: [process.env.WALLET_PRIVATE_KEY]
     },
+    mumbai: {
+      url: `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+      accounts: [process.env.WALLET_PRIVATE_KEY]
+    }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY

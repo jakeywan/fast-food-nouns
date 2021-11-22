@@ -9,7 +9,7 @@
   "main": "src/index.ts",
   "scripts": {
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
-    "deploy-arbis-nouns": "npx hardhat run --network arbitrum scripts/deployArbisNouns.js",
+    "deploy-arbis-nouns": "npx hardhat run --network mumbai scripts/deployArbisNouns.js",
     "deploy-oracle": "npx hardhat run --network rinkeby scripts/deployOracle.js",
     "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
