@@ -23,9 +23,10 @@ import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import { ERC721 } from '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import { ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
+import { FxBaseChildTunnel } from './external/polygon/FxBaseChildTunnel.sol';
 import 'hardhat/console.sol';
 
-contract ArbisNouns is Ownable, ERC721Enumerable {
+contract ArbisNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     using Strings for uint256;
 
     // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
@@ -53,7 +54,8 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
     // Exact copy of the seeds from L1 for a given tokenId
     INounsSeeder.Seed[1000] public seeds;
 
-    constructor() ERC721('Arbis Nouns', 'ARBN') {
+    // _fxChild is a Polygon tunnel contract address
+    constructor(address _fxChild) ERC721('Arbis Nouns', 'ARBN') FxBaseChildTunnel(_fxChild) {
         // Initialize background colors
         backgrounds[0] = 'd5d7e1';
         backgrounds[1] = 'e1d7d5';
@@ -173,39 +175,6 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
     }
 
     /**
-     * @notice Transfers an Arbis Noun to its rightful L1 owner (and if it doesn't
-     * exist, mints it to the rightful owner).
-     */
-    function mint(uint256 tokenId) external {
-        // Mint token to snapshot address
-        _mint(snapshot[tokenId], tokenId);
-    }
-
-    /**
-     * @notice Let user batch mint all their available Arbis Nouns at once
-     */
-    function mintAll() external {
-        for (uint256 i = 0; i < snapshot.length; i++) {
-            if (snapshot[i] == msg.sender) {
-                _mint(snapshot[i], i);
-            }
-        }
-    }
-
-    /**
-     * @notice Check available mints
-     */
-    function checkNumberOfMintsAvailable(address owner) external returns (uint256) {
-        uint256 counter = 0;
-        for (uint256 i = 0; i < snapshot.length; i++) {
-            if (snapshot[i] == owner) {
-                counter++;
-            }
-        }
-        return counter;
-    }
-
-    /**
      * @notice Update seed for an Arbis Noun
      */
     function updateSeed(INounsSeeder.Seed memory seed, uint256 tokenId) external onlyOwner {
@@ -220,10 +189,23 @@ contract ArbisNouns is Ownable, ERC721Enumerable {
     }
 
     /**
-     * @notice Update address to which the given tokenId will be minted
+     * @notice Invoked when a Fast Food Noun is staked/unstaked on L1.
      */
-    function updateSnapshot(uint256 tokenId, address owner) external onlyOwner {
-        snapshot[tokenId] = owner;
+    function _processMessageFromRoot(uint256 stateId, address sender, bytes memory data)
+        internal
+        override
+        validateSender(sender) {
+
+        (uint256 tokenId, uint256 isStaked, address owner) = abi.decode(data, (uint256, uint256, address));
+
+        // If staked, mint user a new NFT
+        if (isStaked == 1) {
+            _mint(owner, tokenId);
+        } else if (isStaked == 0) {
+            // If unstaked, burn NFT
+            _burn(tokenId);
+        }
+        
     }
 
 }

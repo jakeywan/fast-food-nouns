@@ -10,12 +10,15 @@
   "scripts": {
     "deploy-test": "npx hardhat run --network rinkeby scripts/hardhatDeploy.js",
     "deploy-arbis-nouns": "npx hardhat run --network mumbai scripts/deployArbisNouns.js",
-    "deploy-oracle": "npx hardhat run --network rinkeby scripts/deployOracle.js",
     "deploy-wearables": "npx hardhat run --network localhost scripts/deployWearables.js",
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/deployArbisNouns.js",
     "verify-test": "npx hardhat verify --network rinkeby 0xDB13743795C0D90306085f714b63A0A7A9bf8fC3",
-    "query-arbitrum": "node scripts/queryArbitrum.js"
+    "query-arbitrum": "node scripts/queryArbitrum.js",
+    "deploy-goerli-nouns": "npx hardhat run --network goerli scripts/deployGoerliNouns.js",
+    "verify-goerli": "npx hardhat verify --network goerli 0xC78004b21B86de52cBD14Ca3ea8E9A8D8f261240 0x2890bA17EfE978480615e330ecB65333b880928e 0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
+    "verify-mumbai": "npx hardhat verify --network mumbai 0xc77E10614D33a1dE721f047EA97307f434Bcf210 0xCf73231F28B7331BBe3124B907840A94851f9f11",
+    "deploy-staker": "npx hardhat run --network goerli scripts/deployStaker.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
