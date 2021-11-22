@@ -34,7 +34,8 @@ contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
 
     /**
-     * @notice Stake a Fast Food Noun when it is sent to the contract.
+     * @notice Stake a Fast Food Noun when it is sent via `safeTransferFrom`
+     * @dev DO NOT use `transferFrom` to send NFTs. They will get stuck in the contract.
      */
     function onERC721Received(
         address operator, // account who called transfer
@@ -85,17 +86,8 @@ contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
     }
 
     /**
-     * @notice Set the Polygon contract address to communicate with.
-     */
-    function setChildContract(address _contract) external onlyOwner {
-        setFxChildTunnel(_contract);
-    }
-
-    /**
      * @notice Required part of FxBaseRootTunnel interface, but we don't need it.
      */
-    function _processMessageFromChild(bytes memory data) internal override {
-        // do nothing
-    }
+    function _processMessageFromChild(bytes memory data) internal override {}
  
 }
