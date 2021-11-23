@@ -45,7 +45,7 @@ module.exports = {
       accounts: [process.env.WALLET_PRIVATE_KEY]
     },
     polygon: {
-      url: `https://polygon.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+      url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: [process.env.WALLET_PRIVATE_KEY]
     }
   },
