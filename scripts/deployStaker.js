@@ -7,10 +7,7 @@ async function main() {
   // NOTE: Mainnet values used here
   const staker = await Staker.deploy(
     '0x86e4dc95c7fbdbf52e33d563bbdb00823894c287',
-    '0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2',
-    {
-      maxFeePerGas: 120000000000 // 120 gwei
-    }
+    '0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2'
   )
   console.log('Staker deployed to: ', staker.address)
 

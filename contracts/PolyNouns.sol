@@ -38,9 +38,6 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     // Background hex colors
     string[2] public backgrounds;
 
-    // List of owners who can mint their nouns, per tokenId
-    address[1000] public snapshot;
-
     string public tokenDescription = 'Can I take your order? Fast Food Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Polygon Fast Food Noun.';
 
     // The state of what a given tokenId is wearing (tokenId => list of items worn)

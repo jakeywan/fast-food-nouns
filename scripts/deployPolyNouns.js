@@ -8,11 +8,9 @@ async function main() {
 
   // DEPLOY POLY NOUNS
   const PolyNouns = await ethers.getContractFactory('PolyNouns')
-  // NOTE: using mumbai contract address
-  const polyNouns = await PolyNouns.deploy('0xCf73231F28B7331BBe3124B907840A94851f9f11')
-  console.log('ArbisNouns deployed to: ', polyNouns.address)
-
-  // DEPLOY 
+  // NOTE: using polygon mainnet contract address
+  const polyNouns = await PolyNouns.deploy('0x8397259c983751DAf40400790063935a11afa28a')
+  console.log('Polygon Nouns deployed to: ', polyNouns.address)
 
 
   // UPDATE HEAD SVGS
