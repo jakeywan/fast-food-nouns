@@ -9,7 +9,7 @@ async function main() {
     '0x86e4dc95c7fbdbf52e33d563bbdb00823894c287',
     '0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2',
     {
-      gasPrice: 120000000000 // 120 gwei
+      maxFeePerGas: 120000000000 // 120 gwei
     }
   )
   console.log('Staker deployed to: ', staker.address)
