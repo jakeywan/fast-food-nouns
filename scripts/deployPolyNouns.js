@@ -6,11 +6,11 @@ async function main() {
   const [deployer] = await ethers.getSigners()
   console.log('Deploying contracts with the account:', deployer.address)
 
-  // DEPLOY ARBIS NOUNS
-  const ArbisNouns = await ethers.getContractFactory('ArbisNouns')
+  // DEPLOY POLY NOUNS
+  const PolyNouns = await ethers.getContractFactory('PolyNouns')
   // NOTE: using mumbai contract address
-  const arbisNouns = await ArbisNouns.deploy('0xCf73231F28B7331BBe3124B907840A94851f9f11')
-  console.log('ArbisNouns deployed to: ', arbisNouns.address)
+  const polyNouns = await PolyNouns.deploy('0xCf73231F28B7331BBe3124B907840A94851f9f11')
+  console.log('ArbisNouns deployed to: ', polyNouns.address)
 
   // DEPLOY 
 
@@ -26,9 +26,6 @@ async function main() {
   //   await arbisNouns.updateSeed(seeds[i], i)
   //   console.log('seed updated ', i)
   // }
-
-  // UPDATE SNAPSHOT
-
 
 
 }
