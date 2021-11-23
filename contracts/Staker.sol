@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title Fast Food Nouns Staker & Oracle
+/// @title Fast Food Nouns Staker & L2 Oracle
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -27,7 +27,7 @@ contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
     address[1000] public stakedOwners;
 
     // L1 Fast Food Nouns contract address
-    ERC721 public tokenContract = ERC721(0xA396B9E7F31b7119D481d435e5570872C911Ac7E);
+    ERC721 public tokenContract = ERC721(0xfba74f771fcee22f2ffec7a66ec14207c7075a32);
 
     // Both params are Polygon tunnel contracts
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}

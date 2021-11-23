@@ -7,8 +7,8 @@ async function main() {
   console.log('Deploying contracts with the account:', deployer.address)
 
   const Staker = await ethers.getContractFactory('Staker')
-  // NOTE: Goerli values used here
-  const staker = await Staker.deploy('0x2890bA17EfE978480615e330ecB65333b880928e', '0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA')
+  // NOTE: Mainnet values used here
+  const staker = await Staker.deploy('0x86e4dc95c7fbdbf52e33d563bbdb00823894c287', '0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2')
   console.log('Staker deployed to: ', staker.address)
 
 }
