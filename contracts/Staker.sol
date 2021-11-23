@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title Fast Food Nouns Staker
+/// @title Fast Food Nouns Staker & Oracle
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -21,7 +21,6 @@ import { FxBaseRootTunnel } from './external/polygon/FxBaseRootTunnel.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
-// https://docs.polygon.technology/docs/develop/l1-l2-communication/state-transfer#state-transfer-from-ethereum-to-polygon
 contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
   
     // If a token is staked, this value will be set. Otherwise it'll be 0x0
