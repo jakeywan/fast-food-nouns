@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title Poly Nouns ERC721
+/// @title Polygon Fast Food Nouns ERC721
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -29,16 +29,11 @@ import 'hardhat/console.sol';
 contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     using Strings for uint256;
 
-    // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
-    bytes32 constant COPYRIGHT_CC0_1_0_UNIVERSAL_LICENSE = 0xa2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499;
-
     // Determines where in the stack the head is inserted per tokenId
     uint256[1000] public headPositions;
 
-    // Given a seed, return a head SVG. Note that this won't be full, there aren't
-    // 1000 different heads. TODO: make this number closer to the actual number we
-    // need.
-    string[1000] public headSVGs;
+    // Given a seed, return a head SVG.
+    string[235] public headSVGs;
 
     // Background hex colors
     string[2] public backgrounds;
@@ -46,7 +41,7 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     // List of owners who can mint their nouns, per tokenId
     address[1000] public snapshot;
 
-    string public tokenDescription = 'Can I take your order? Fast Food Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Arbis Noun.';
+    string public tokenDescription = 'Can I take your order? Fast Food Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Polygon Fast Food Noun.';
 
     // The state of what a given tokenId is wearing (tokenId => list of items worn)
     mapping(uint256 => IOpenWearables.WearableRef[]) public wearableRefsByTokenId;
@@ -55,7 +50,7 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     INounsSeeder.Seed[1000] public seeds;
 
     // _fxChild is a Polygon tunnel contract address
-    constructor(address _fxChild) ERC721('Arbis Nouns', 'ARBN') FxBaseChildTunnel(_fxChild) {
+    constructor(address _fxChild) ERC721('Polygon Fast Food Nouns', 'PFFN') FxBaseChildTunnel(_fxChild) {
         // Initialize background colors
         backgrounds[0] = 'd5d7e1';
         backgrounds[1] = 'e1d7d5';
@@ -87,7 +82,6 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
             wearableRefsByTokenId[tokenId].push(wRefs[i]);
 
         }
-        // TODO: We should emit an event here for clients
     }
 
     /**
@@ -106,7 +100,7 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
      */
     function generateSVGImage(uint256 tokenId) public view returns (string memory) {
 
-        // Generate each rect individually, and then compose the SVG
+        // Wearables worn for this tokenId
         IOpenWearables.WearableRef[] memory wearableRefs = wearableRefsByTokenId[tokenId];
         // Final string of all our rects
         string memory rects;
@@ -125,7 +119,6 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
                 IOpenWearables wContract = IOpenWearables(wearableRefs[i].contractAddress);
                 // If user doesn't own wearable, skip it
                 address owner = ownerOf(tokenId);
-
                 if (wContract.balanceOf(owner, wearableRefs[i].tokenId) == 0) {
                     continue;
                 }
@@ -141,12 +134,12 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     }
 
     /**
-     * @notice Compose tokenURI for Arbis Noun.
+     * @notice Compose tokenURI for Poly Noun.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), 'Nonexistent token.');
         string memory NounID = tokenId.toString();
-        string memory name = string(abi.encodePacked('Arbis Noun ', NounID));
+        string memory name = string(abi.encodePacked('Fast Food Noun ', NounID));
         string memory description = tokenDescription;
 
         // Build svg
@@ -175,7 +168,7 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     }
 
     /**
-     * @notice Update seed for an Arbis Noun
+     * @notice Update seed for a Poly Noun
      */
     function updateSeed(INounsSeeder.Seed memory seed, uint256 tokenId) external onlyOwner {
         seeds[tokenId] = seed;
@@ -186,6 +179,13 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
      */
     function updateHeadSVG(uint256 seed, string memory svg) external onlyOwner {
         headSVGs[seed] = svg;
+    }
+
+    /**
+     * @notice Update token description
+     */
+    function updateTokenDescription(string calldata description) external onlyOwner {
+        tokenDescription = description;
     }
 
     /**
