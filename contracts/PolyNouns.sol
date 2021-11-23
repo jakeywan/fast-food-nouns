@@ -217,4 +217,11 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
         revert("No L2 transfers");
     }
 
+    /**
+     * @notice So we can update more than once.
+     */
+    function setFxRootTunnelAddress(address _fxRootTunnel) external onlyOwner {
+        fxRootTunnel = _fxRootTunnel;
+    }
+
 }

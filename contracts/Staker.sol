@@ -88,5 +88,12 @@ contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
      * @notice Required part of FxBaseRootTunnel interface, but we don't need it.
      */
     function _processMessageFromChild(bytes memory data) internal override {}
+
+    /**
+     * @notice So we can update more than once.
+     */
+    function setFxChildTunnelAddress(address _fxChildTunnel) external onlyOwner {
+        fxChildTunnel = _fxChildTunnel;
+    }
  
 }
