@@ -21,13 +21,13 @@ import { FxBaseRootTunnel } from './external/polygon/FxBaseRootTunnel.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
-contract Staker is Ownable, IERC721Receiver, FxBaseRootTunnel {
+contract FastFoodStaker is Ownable, IERC721Receiver, FxBaseRootTunnel {
   
     // If a token is staked, this value will be set. Otherwise it'll be 0x0
     address[1000] public stakedOwners;
 
     // L1 Fast Food Nouns contract address
-    ERC721 public tokenContract = ERC721(0xfba74f771fcee22f2ffec7a66ec14207c7075a32);
+    ERC721 public tokenContract = ERC721(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
 
     // Both params are Polygon tunnel contracts
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
