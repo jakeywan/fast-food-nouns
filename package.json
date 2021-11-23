@@ -18,7 +18,7 @@
     "deploy-goerli-nouns": "npx hardhat run --network goerli scripts/deployGoerliNouns.js",
     "verify-goerli": "npx hardhat verify --network goerli 0x337a9a9cfA19a77E0b0C39f160A21E16DEB0D041 0x2890bA17EfE978480615e330ecB65333b880928e 0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA",
     "verify-mumbai": "npx hardhat verify --network mumbai 0xc77E10614D33a1dE721f047EA97307f434Bcf210 0xCf73231F28B7331BBe3124B907840A94851f9f11",
-    "deploy-staker": "npx hardhat run --network goerli scripts/deployStaker.js"
+    "deploy-staker": "npx hardhat run --network mainnet scripts/deployStaker.js"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
