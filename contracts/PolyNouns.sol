@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title Arbis Nouns ERC721
+/// @title Poly Nouns ERC721
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -26,7 +26,7 @@ import { ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extension
 import { FxBaseChildTunnel } from './external/polygon/FxBaseChildTunnel.sol';
 import 'hardhat/console.sol';
 
-contract ArbisNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
+contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     using Strings for uint256;
 
     // https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
@@ -46,7 +46,7 @@ contract ArbisNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
     // List of owners who can mint their nouns, per tokenId
     address[1000] public snapshot;
 
-    string public tokenDescription = 'Can I take your order? Arbis Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Arbis Noun.';
+    string public tokenDescription = 'Can I take your order? Fast Food Nouns are an NFT wearables project by the Fast Food DAO. Buy a Fast Food Noun on Ethereum to claim your Arbis Noun.';
 
     // The state of what a given tokenId is wearing (tokenId => list of items worn)
     mapping(uint256 => IOpenWearables.WearableRef[]) public wearableRefsByTokenId;
@@ -206,6 +206,15 @@ contract ArbisNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
             _burn(tokenId);
         }
         
+    }
+
+    /**
+     * @notice Override all transfers.
+     * @dev Under no circumstances should a PolyNoun be bought, sold, or traded
+     * (bc you can only acquire one by staking on L1).
+     */
+    function _transfer(address from, address to, uint256 tokenId) internal override {
+        revert("No L2 transfers");
     }
 
 }
