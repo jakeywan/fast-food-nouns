@@ -14,10 +14,10 @@
     "local-test-mint": "npx hardhat run --network localhost scripts/testMint.js",
     "deploy-local": "npx hardhat run --network localhost scripts/deployArbisNouns.js",
     "verify-test": "npx hardhat verify --network rinkeby 0xDB13743795C0D90306085f714b63A0A7A9bf8fC3",
-    "query-arbitrum": "node scripts/queryArbitrum.js",
+    "exec-polygon": "node scripts/execPolygon.js",
     "deploy-goerli-nouns": "npx hardhat run --network goerli scripts/deployGoerliNouns.js",
     "verify-staker": "npx hardhat verify --network mainnet 0xDA14c912078eBFC6c6d9a1362065a25B7bd81EbF 0x86e4dc95c7fbdbf52e33d563bbdb00823894c287 0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2",
-    "verify-mumbai": "npx hardhat verify --network mumbai 0xc77E10614D33a1dE721f047EA97307f434Bcf210 0xCf73231F28B7331BBe3124B907840A94851f9f11",
+    "verify-polygon": "npx hardhat verify --network polygon 0x514715Fc7F687Ed94E585CaB2bB3009d70C2Cc40 0x8397259c983751DAf40400790063935a11afa28a",
     "deploy-staker": "npx hardhat run --network mainnet scripts/deployStaker.js"
   },
   "devDependencies": {
@@ -28,6 +28,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
     "arb-ts": "^1.0.2",
     "base64-sol": "^1.1.0",
+    "chai": "^4.3.4",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",
     "hardhat": "^2.6.0",

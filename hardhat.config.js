@@ -16,7 +16,7 @@ module.exports = {
       },
     },
   },
-  defaultNetwork: "rinkeby",
+  defaultNetwork: "localhost",
   networks: {
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
@@ -33,7 +33,7 @@ module.exports = {
     hardhat: {
       forking: {
         // `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
-        url: `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
+        url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
       }
     },
     arbitrum: {

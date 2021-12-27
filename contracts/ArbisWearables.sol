@@ -40,16 +40,6 @@ contract FFNWearables is ERC1155, Ownable {
     // Holds WearableData per tokenId
     IOpenWearables.WearableData[] public wearableDataByTokenId;
 
-    // tokenId => reference of how to retrieve Noun part information. Holds
-    // alternative wearable data that references the Nouns contract. We do
-    // this so we don't have to save the SVG rects to storage (expensive).
-    // 0 = body, 1 = accessory, 2 = glasses
-    struct NounsPartRef {
-        uint256 partType;
-        uint256 seed;
-    }
-    mapping(uint256 => NounsPartRef) public nounsPartRefsByTokenId;
-
     // Specifies which tokenIds which are open to mint. tokenId => isOpenToMint
     mapping(uint256 => bool) public openMintWearables;
 
@@ -63,11 +53,8 @@ contract FFNWearables is ERC1155, Ownable {
     // True if FFN has already minted base wearables
     bool[1000] public hasMintedBaseWearables;
 
-    // Reference to Nouns contract, using to check ownership
-    INounsToken public fastFoodNouns = INounsToken(0xFbA74f771FCEE22f2FFEC7A66EC14207C7075a32);
-
-    // Used to fetch base parts and render non-opted-in FFNs
-    INounsDescriptor public nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
+    // Reference to Polygon FFNs contract, using to check ownership
+    INounsToken public fastFoodNouns = INounsToken(0x514715Fc7F687Ed94E585CaB2bB3009d70C2Cc40);
 
     event WearableMinted(uint256 indexed tokenId, address indexed creator);
 
@@ -85,18 +72,8 @@ contract FFNWearables is ERC1155, Ownable {
         returns (IOpenWearables.WearableData memory)
     {
         require(balanceOf(owner, tokenId) > 0, "Wearable not owned.");
-
-        // If we don't have innerSVG for this tokenId, fallback to NounsPartRef
-        if (bytes(wearableDataByTokenId[tokenId].innerSVG).length == 0) {
-            return IOpenWearables.WearableData({
-                name: wearableDataByTokenId[tokenId].name,
-                innerSVG: renderNounsPartForTokenId(tokenId),
-                size: wearableDataByTokenId[tokenId].size
-            });
-        } else {
-            return wearableDataByTokenId[tokenId];
-        }
-
+        
+        return wearableDataByTokenId[tokenId];
     }
 
     /**
@@ -130,7 +107,6 @@ contract FFNWearables is ERC1155, Ownable {
     function mintOpenWearable(uint256 tokenId) external {
         require(openMintWearables[tokenId], "Wearable not free.");
         require(bytes(wearableDataByTokenId[tokenId].name).length > 0, "No token data.");
-        // TODO: require they own at least one FFN
 
         _mint(msg.sender, tokenId, 1, "");
         emit WearableMinted(tokenId, msg.sender);
@@ -146,19 +122,15 @@ contract FFNWearables is ERC1155, Ownable {
     /**
      * @notice Compose image and return tokenURI.
      */
-    function tokenURI(uint256 tokenId) external returns (string memory) {
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
         
-        // If `_wearableData.innerSVG` is empty, fallback to NounsPartRef
-        string memory innerSVG;
-        if (bytes(wearableDataByTokenId[tokenId].innerSVG).length == 0) {
-            innerSVG = renderNounsPartForTokenId(tokenId);
-        } else {
-            innerSVG = wearableDataByTokenId[tokenId].innerSVG;
-        }
-        string memory base64SVG = RenderingEngine._composeSVGParts(innerSVG, "e1d7d5");
+        string memory base64SVG = _composeSVGParts(
+            wearableDataByTokenId[tokenId].innerSVG,
+            "e1d7d5"
+        );
 
         string memory name = wearableDataByTokenId[tokenId].name;
-        string memory description = 'TODO';
+        string memory description = 'Fast Food Nouns wearable.';
 
         string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
         
@@ -166,19 +138,12 @@ contract FFNWearables is ERC1155, Ownable {
     }
 
     /**
-     * @notice This contract may become open for all to mint, but the DAO keeps
-     * the right to ban offensive designs. We're not burning these because it's
-     * not as cost-effective. Use the burn mechanism if you want to do that.
-     */
-    function banToken(uint256 tokenId) external onlyOwner {
-        delete wearableDataByTokenId[tokenId];
-    }
-
-    /**
-     * @notice Burn tokens with a specific tokenId held by a specific address.
+     * @notice Burn/ban tokens with a specific tokenId held by a specific address.
+     * The DAO reserves right to ban offensive designs.
      */
     function burn(address account, uint256 tokenId, uint256 amount) external onlyOwner {
         _burn(account, tokenId, amount);
+        delete wearableDataByTokenId[tokenId];
     }
 
     /**
@@ -192,8 +157,9 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Let each FFN mint their current clothes, one time.
      */
     function mintBaseWearables(uint256 tokenId) external {
-        require(fastFoodNouns.ownerOf(tokenId) == msg.sender, "Not your FFN.");
         require(!hasMintedBaseWearables[tokenId], "Already minted basics.");
+
+        address owner = fastFoodNouns.ownerOf(tokenId);
 
         // Get seeds for this FFN
         (
@@ -204,99 +170,80 @@ contract FFNWearables is ERC1155, Ownable {
             uint48 glasses
         ) = fastFoodNouns.seeds(tokenId);
 
-        // BODY
-        if (mintedBodySeeds[body] == 0) {
-            // Mint new item
-            _mint(msg.sender, _currentId, 1, "");
-            // Save wearable data for this tokenId (using NounsPartRef)
-            wearableDataByTokenId.push(IOpenWearables.WearableData({
-                name: string(abi.encodePacked('Nouns Shirt ', _currentId.toString())),
-                innerSVG: '', // empty fill force us to fallback to NounsPartRef
-                size: 320
-            }));
-            // Save nounsPartRefsByTokenId for this tokenId
-            nounsPartRefsByTokenId[_currentId] = NounsPartRef({
-                partType: 0,
-                seed: body
-            });
-            emit WearableMinted(_currentId++, msg.sender);
-        } else {
-            // Increment existing item
-            _mint(msg.sender, mintedBodySeeds[body], 1, "");
-            emit WearableMinted(tokenId, msg.sender);
-        }
-
-        // ACCESSORY
-        if (mintedAccessorySeeds[accessory] == 0) {
-            // Mint new item
-            _mint(msg.sender, _currentId, 1, "");
-            // Save wearable data for this tokenId (using NounsPartRef)
-            wearableDataByTokenId.push(IOpenWearables.WearableData({
-                name: string(abi.encodePacked('Nouns Accessory ', _currentId.toString())),
-                innerSVG: '', // empty fill force us to fallback to NounsPartRef
-                size: 320
-            }));
-            // Save nounsPartRefsByTokenId for this tokenId
-            nounsPartRefsByTokenId[_currentId] = NounsPartRef({
-                partType: 1,
-                seed: accessory
-            });
-            emit WearableMinted(_currentId++, msg.sender);
-        } else {
-            // Increment existing item
-            _mint(msg.sender, mintedAccessorySeeds[accessory], 1, "");
-            emit WearableMinted(tokenId, msg.sender);
-        }
-
-        // GLASSES
-        if (mintedGlassesSeeds[glasses] == 0) {
-            // Mint new item
-            _mint(msg.sender, _currentId, 1, "");
-            // Save wearable data for this tokenId (using NounsPartRef)
-            wearableDataByTokenId.push(IOpenWearables.WearableData({
-                name: string(abi.encodePacked('Nouns Glasses ', _currentId.toString())),
-                innerSVG: '', // empty fill force us to fallback to NounsPartRef
-                size: 320
-            }));
-            // Save nounsPartRefsByTokenId for this tokenId
-            nounsPartRefsByTokenId[_currentId] = NounsPartRef({
-                partType: 2,
-                seed: glasses
-            });
-            emit WearableMinted(_currentId++, msg.sender);
-        } else {
-            // Increment existing item
-            _mint(msg.sender, mintedGlassesSeeds[glasses], 1, "");
-            emit WearableMinted(tokenId, msg.sender);
-        }
-
+        // Capture that this FFN has minted base wearables
         hasMintedBaseWearables[tokenId] = true;
+
+         // Mint additional existing tokens
+        _mint(owner, mintedBodySeeds[body], 1, "");
+        emit WearableMinted(tokenId, owner);
+
+        _mint(owner, mintedAccessorySeeds[accessory], 1, "");
+        emit WearableMinted(tokenId, owner);
+
+        _mint(owner, mintedGlassesSeeds[glasses], 1, "");
+        emit WearableMinted(tokenId, owner);
+
     }
 
     /**
-     * @notice Renders an innerSVG part from a `NounsPartReference`. We're relying
-     * on this mechanism so we don't have to store extra innerSVGs in state.
+     * @notice Admin mint one of each base wearable. This must be populated after deploy.
      */
-    function renderNounsPartForTokenId(uint256 tokenId) public view returns (string memory innerSVG) {
-        NounsPartRef storage ref = nounsPartRefsByTokenId[tokenId];
+    function adminMintBaseWearable(
+        uint256 seed,
+        uint256 seedType, // 0 body, 1 glasses, 2 accessories
+        string memory innerSVG,
+        string memory name
+    ) external onlyOwner {
         
-        // Render and save wearable data for this tokenId
-        bytes[] memory _parts = new bytes[](1);
-        
-        // Body
-        if (ref.partType == 0) {
-            _parts[0] = nounDescriptor.bodies(ref.seed);
+        // Save data to state
+        wearableDataByTokenId.push(IOpenWearables.WearableData({
+            name: name,
+            innerSVG: innerSVG
+        }));
+
+        // Save a reference for this item (seed # => wearable tokenId)
+        if (seedType == 0) {
+            mintedBodySeeds[seed] = _currentId;
         }
-        // Accessory
-        if (ref.partType == 1) {
-            _parts[0] = nounDescriptor.accessories(ref.seed);
+        if (seedType == 1) {
+            mintedGlassesSeeds[seed] = _currentId;
         }
-        // Glasses
-        if (ref.partType == 2) {
-            _parts[0] = nounDescriptor.glasses(ref.seed);
+        if (seedType == 2) {
+            mintedAccessorySeeds[seed] = _currentId;
         }
 
-        return RenderingEngine._generateSVGRects(_parts);
+        console.logUint(_currentId);
+
+        // Mint
+        _mint(msg.sender, _currentId++, 1, "");
+    }
+
+    /**
+     * @dev Admin mint tokens (only works for existing tokens)
+     */
+    function adminMintExisting(address to, uint256 tokenId, uint256 amount)
+        external
+        onlyOwner
+    {
+        // Mint and save data
+        _mint(to, tokenId, amount, "");
+
+        emit WearableMinted(_currentId++, msg.sender);
+    }
+
+    /**
+     * @dev Admint mint new tokens    
+     */
+    function adminMintNew(
+        address to,
+        uint256 amount,
+        IOpenWearables.WearableData memory _wearableData
+    ) external onlyOwner {
+        // Mint and save data
+        _mint(to, _currentId, amount, "");
+        wearableDataByTokenId.push(_wearableData);
+
+        emit WearableMinted(_currentId++, msg.sender);
     }
 
     /**
@@ -306,35 +253,13 @@ contract FFNWearables is ERC1155, Ownable {
         fastFoodNouns = INounsToken(_contract);
     }
 
-}
-
-library RenderingEngine {
-
-    struct ContentBounds {
-        uint8 top;
-        uint8 right;
-        uint8 bottom;
-        uint8 left;
-    }
-
-    struct Rect {
-        uint8 length;
-        uint8 colorIndex;
-    }
-
-    struct DecodedImage {
-        uint8 paletteIndex;
-        ContentBounds bounds;
-        Rect[] rects;
-    }
-
     /**
      * @notice Given a string of interior SVG parts and a background, compose
      * and encode the final SVG.
      */
     function _composeSVGParts(string memory rects, string memory background)
         internal
-        view
+        pure
         returns(string memory)
     {
         return Base64.encode(abi.encodePacked(
@@ -345,103 +270,4 @@ library RenderingEngine {
         ));
     }
 
-    /**
-     * @notice Given RLE image parts and color palettes, generate SVG rects.
-     * @dev This function will fallback to using the Nouns contract as palette
-     * if an empty palette is supplied to it.
-     * TODO: we should pass the Nouns descriptor contract address in explicitly,
-     * in case they move it and we want to keep it updated.
-     */
-    function _generateSVGRects(bytes[] memory parts)
-        internal
-        view
-        returns (string memory svg)
-    {
-        // TODO: will we ever want to update this?
-        INounsDescriptor nounDescriptor = INounsDescriptor(0x0Cfdb3Ba1694c2bb2CFACB0339ad7b1Ae5932B63);
-        string[33] memory lookup = [
-            '0', '10', '20', '30', '40', '50', '60', '70', 
-            '80', '90', '100', '110', '120', '130', '140', '150', 
-            '160', '170', '180', '190', '200', '210', '220', '230', 
-            '240', '250', '260', '270', '280', '290', '300', '310',
-            '320' 
-        ];
-        string memory rects;
-        for (uint8 p = 0; p < parts.length; p++) {
-            DecodedImage memory image = _decodeRLEImage(parts[p]);
-            uint256 currentX = image.bounds.left;
-            uint256 currentY = image.bounds.top;
-            uint256 cursor;
-            string[16] memory buffer;
-
-            string memory part;
-            for (uint256 i = 0; i < image.rects.length; i++) {
-                Rect memory rect = image.rects[i];
-                if (rect.colorIndex != 0) {
-                    buffer[cursor] = lookup[rect.length];          // width
-                    buffer[cursor + 1] = lookup[currentX];         // x
-                    buffer[cursor + 2] = lookup[currentY];         // y
-                    // Use the default Nouns palette
-                    buffer[cursor + 3] = nounDescriptor.palettes(0, rect.colorIndex);
-                   
-                    cursor += 4;
-
-                    if (cursor >= 16) {
-                        part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
-                        cursor = 0;
-                    }
-                }
-
-                currentX += rect.length;
-                if (currentX == image.bounds.right) {
-                    currentX = image.bounds.left;
-                    currentY++;
-                }
-            }
-
-            if (cursor != 0) {
-                part = string(abi.encodePacked(part, _getChunk(cursor, buffer)));
-            }
-            rects = string(abi.encodePacked(rects, part));
-        }
-        return rects;
-    }
-
-    /**
-     * @notice Return a string that consists of all rects in the provided `buffer`.
-     */
-    // prettier-ignore
-    function _getChunk(uint256 cursor, string[16] memory buffer) private pure returns (string memory) {
-        string memory chunk;
-        for (uint256 i = 0; i < cursor; i += 4) {
-            chunk = string(
-                abi.encodePacked(
-                    chunk,
-                    '<rect width="', buffer[i], '" height="10" x="', buffer[i + 1], '" y="', buffer[i + 2], '" fill="#', buffer[i + 3], '" />'
-                )
-            );
-        }
-        return chunk;
-    }
-
-    /**
-     * @notice Decode a single RLE compressed image into a `DecodedImage`.
-     */
-    function _decodeRLEImage(bytes memory image) private pure returns (DecodedImage memory) {
-        uint8 paletteIndex = uint8(image[0]);
-        ContentBounds memory bounds = ContentBounds({
-            top: uint8(image[1]),
-            right: uint8(image[2]),
-            bottom: uint8(image[3]),
-            left: uint8(image[4])
-        });
-
-        uint256 cursor;
-        Rect[] memory rects = new Rect[]((image.length - 5) / 2);
-        for (uint256 i = 5; i < image.length; i += 2) {
-            rects[cursor] = Rect({ length: uint8(image[i]), colorIndex: uint8(image[i + 1]) });
-            cursor++;
-        }
-        return DecodedImage({ paletteIndex: paletteIndex, bounds: bounds, rects: rects });
-    }
 }
