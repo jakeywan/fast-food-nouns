@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-/// @title The Fast Food Nouns Wearables Tokens
+/// @title The Fast Food Mart
 
 /*********************************
  * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
@@ -23,7 +23,6 @@ import { INounsToken } from './interfaces/INounsToken.sol';
 import { IOpenWearables } from './interfaces/IOpenWearables.sol';
 import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
-import 'hardhat/console.sol';
 
 contract FFNWearables is ERC1155, Ownable {
     using Strings for uint256;
@@ -43,9 +42,7 @@ contract FFNWearables is ERC1155, Ownable {
     // Specifies which tokenIds which are open to mint. tokenId => isOpenToMint
     mapping(uint256 => bool) public openMintWearables;
 
-    // Tracks which base seed items have already been created as tokens in
-    // our system. seed number => our tokenId. tokenId 0 is going to be a custom
-    // item, so we can expect it to be non-zero
+    // seed number => our wearable tokenId
     mapping(uint256 => uint256) public mintedBodySeeds;
     mapping(uint256 => uint256) public mintedAccessorySeeds;
     mapping(uint256 => uint256) public mintedGlassesSeeds;
@@ -58,7 +55,7 @@ contract FFNWearables is ERC1155, Ownable {
 
     event WearableMinted(uint256 indexed tokenId, address indexed creator);
 
-    constructor() ERC1155('Fast Food Wearables') {}
+    constructor() ERC1155('Fast Food Mart') {}
 
     /**
      * @notice Verify ownership and return WearableData for token requested.
@@ -72,32 +69,26 @@ contract FFNWearables is ERC1155, Ownable {
         returns (IOpenWearables.WearableData memory)
     {
         require(balanceOf(owner, tokenId) > 0, "Wearable not owned.");
-        
         return wearableDataByTokenId[tokenId];
     }
 
     /**
      * @notice Mint an `amount` of tokens to sender and save WearableData to state.
-     * @dev Can only be called by a whitelisted creator address.
      */
     function mint(uint256 amount, IOpenWearables.WearableData memory _wearableData) external {
-
         if (mintingStatus == Status.Paused) {
-            revert("Minting paused.");
+            revert("Minting paused");
         }
-        
         if (mintingStatus == Status.WhitelistOnly) {
-            require(whitelist[msg.sender], "Not whitelisted.");
+            require(whitelist[msg.sender], "Not whitelisted");
         }
-
         if (mintingStatus == Status.FFNsOnly) {
-            require(fastFoodNouns.balanceOf(msg.sender) > 0, "Not an FFN holder.");
+            require(fastFoodNouns.balanceOf(msg.sender) > 0, "Not an FFN holder");
         }
 
         // Mint and save data
         _mint(msg.sender, _currentId, amount, "");
         wearableDataByTokenId.push(_wearableData);
-
         emit WearableMinted(_currentId++, msg.sender);
     }
 
@@ -123,26 +114,22 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Compose image and return tokenURI.
      */
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        
         string memory base64SVG = _composeSVGParts(
             wearableDataByTokenId[tokenId].innerSVG,
             "e1d7d5"
         );
-
         string memory name = wearableDataByTokenId[tokenId].name;
-        string memory description = 'Fast Food Nouns wearable.';
-
+        string memory description = 'Fast Food Nouns wearable NFTs on Polygon.';
         string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
         
         return string(abi.encodePacked('data:application/json;base64,', json));
     }
 
     /**
-     * @notice Burn/ban tokens with a specific tokenId held by a specific address.
-     * The DAO reserves right to ban offensive designs.
+     * @notice Ban/delete a tokenId. Deletes the design.
+     * @dev The DAO reserves right to ban offensive designs.
      */
-    function burn(address account, uint256 tokenId, uint256 amount) external onlyOwner {
-        _burn(account, tokenId, amount);
+    function adminBan(uint256 tokenId) external onlyOwner {
         delete wearableDataByTokenId[tokenId];
     }
 
@@ -157,7 +144,7 @@ contract FFNWearables is ERC1155, Ownable {
      * @notice Let each FFN mint their current clothes, one time.
      */
     function mintBaseWearables(uint256 tokenId) external {
-        require(!hasMintedBaseWearables[tokenId], "Already minted basics.");
+        require(!hasMintedBaseWearables[tokenId], "Already minted basics");
 
         address owner = fastFoodNouns.ownerOf(tokenId);
 
@@ -175,13 +162,13 @@ contract FFNWearables is ERC1155, Ownable {
 
          // Mint additional existing tokens
         _mint(owner, mintedBodySeeds[body], 1, "");
-        emit WearableMinted(tokenId, owner);
+        emit WearableMinted(mintedBodySeeds[body], owner);
 
         _mint(owner, mintedAccessorySeeds[accessory], 1, "");
-        emit WearableMinted(tokenId, owner);
+        emit WearableMinted(mintedAccessorySeeds[accessory], owner);
 
         _mint(owner, mintedGlassesSeeds[glasses], 1, "");
-        emit WearableMinted(tokenId, owner);
+        emit WearableMinted(mintedGlassesSeeds[glasses], owner);
 
     }
 
@@ -191,15 +178,10 @@ contract FFNWearables is ERC1155, Ownable {
     function adminMintBaseWearable(
         uint256 seed,
         uint256 seedType, // 0 body, 1 glasses, 2 accessories
-        string memory innerSVG,
-        string memory name
+        IOpenWearables.WearableData memory _wearableData
     ) external onlyOwner {
-        
         // Save data to state
-        wearableDataByTokenId.push(IOpenWearables.WearableData({
-            name: name,
-            innerSVG: innerSVG
-        }));
+        wearableDataByTokenId.push(_wearableData);
 
         // Save a reference for this item (seed # => wearable tokenId)
         if (seedType == 0) {
@@ -212,23 +194,21 @@ contract FFNWearables is ERC1155, Ownable {
             mintedAccessorySeeds[seed] = _currentId;
         }
 
-        console.logUint(_currentId);
-
         // Mint
-        _mint(msg.sender, _currentId++, 1, "");
+        _mint(msg.sender, _currentId, 1, "");
+        emit WearableMinted(_currentId++, msg.sender);
     }
 
     /**
      * @dev Admin mint tokens (only works for existing tokens)
      */
-    function adminMintExisting(address to, uint256 tokenId, uint256 amount)
+    function adminMintSpecific(address to, uint256 tokenId, uint256 amount)
         external
         onlyOwner
     {
         // Mint and save data
         _mint(to, tokenId, amount, "");
-
-        emit WearableMinted(_currentId++, msg.sender);
+        emit WearableMinted(tokenId, msg.sender);
     }
 
     /**
@@ -242,7 +222,6 @@ contract FFNWearables is ERC1155, Ownable {
         // Mint and save data
         _mint(to, _currentId, amount, "");
         wearableDataByTokenId.push(_wearableData);
-
         emit WearableMinted(_currentId++, msg.sender);
     }
 
@@ -251,6 +230,13 @@ contract FFNWearables is ERC1155, Ownable {
      */
     function updateFFNContract(address _contract) external onlyOwner {
         fastFoodNouns = INounsToken(_contract);
+    }
+
+    /**
+     * @notice Add/remove an address to the whitelist
+     */
+    function toggleWhitelistAddress(address _address) external onlyOwner {
+        whitelist[_address] = !whitelist[_address];
     }
 
     /**
