@@ -73,7 +73,7 @@ contract PolyNouns is Ownable, ERC721Enumerable, FxBaseChildTunnel {
         for (uint256 i = 0; i < wRefs.length; i++) {
             IOpenWearables wContract = IOpenWearables(wRefs[i].contractAddress);
             
-            require(wContract.balanceOf(msg.sender, tokenId) > 0, "Not your wearable.");
+            require(wContract.balanceOf(msg.sender, wRefs[i].tokenId) > 0, "Not your wearable.");
 
             // Set WearableRef to state
             wearableRefsByTokenId[tokenId].push(wRefs[i]);

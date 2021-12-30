@@ -25,7 +25,6 @@ interface IOpenWearables {
     struct WearableData {
         string name;
         string innerSVG;
-        uint256 size;
     }
 
     struct WearableRef {
