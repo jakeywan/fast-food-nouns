@@ -21,11 +21,8 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import { Base64 } from 'base64-sol/base64.sol';
 import { INounsToken } from './interfaces/INounsToken.sol';
 import { IOpenWearables } from './interfaces/IOpenWearables.sol';
-import { INounsDescriptor } from './interfaces/INounsDescriptor.sol';
-import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 
 contract FFNWearables is ERC1155, Ownable {
-    using Strings for uint256;
 
     // The internal tokenId tracker
     uint256 private _currentId;
@@ -73,6 +70,21 @@ contract FFNWearables is ERC1155, Ownable {
     }
 
     /**
+     * @notice Compose image and return tokenURI.
+     */
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        string memory base64SVG = _composeSVGParts(
+            wearableDataByTokenId[tokenId].innerSVG,
+            "e1d7d5"
+        );
+        string memory name = wearableDataByTokenId[tokenId].name;
+        string memory description = 'Fast Food Nouns wearable NFTs on Polygon.';
+        string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
+        
+        return string(abi.encodePacked('data:application/json;base64,', json));
+    }
+
+    /**
      * @notice Mint an `amount` of tokens to sender and save WearableData to state.
      */
     function mint(uint256 amount, IOpenWearables.WearableData memory _wearableData) external {
@@ -101,43 +113,6 @@ contract FFNWearables is ERC1155, Ownable {
 
         _mint(msg.sender, tokenId, 1, "");
         emit WearableMinted(tokenId, msg.sender);
-    }
-
-    /**
-     * @notice Toggle whether a specific wearable should be open mint.
-     */
-    function toggleOpenMintWearable(uint256 tokenId) external onlyOwner {
-        openMintWearables[tokenId] = !openMintWearables[tokenId];
-    }
-
-    /**
-     * @notice Compose image and return tokenURI.
-     */
-    function tokenURI(uint256 tokenId) external view returns (string memory) {
-        string memory base64SVG = _composeSVGParts(
-            wearableDataByTokenId[tokenId].innerSVG,
-            "e1d7d5"
-        );
-        string memory name = wearableDataByTokenId[tokenId].name;
-        string memory description = 'Fast Food Nouns wearable NFTs on Polygon.';
-        string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name":"', name, '", "description":"', description, '", "image":"data:image/svg+xml;base64,', base64SVG, '"}'))));
-        
-        return string(abi.encodePacked('data:application/json;base64,', json));
-    }
-
-    /**
-     * @notice Ban/delete a tokenId. Deletes the design.
-     * @dev The DAO reserves right to ban offensive designs.
-     */
-    function adminBan(uint256 tokenId) external onlyOwner {
-        delete wearableDataByTokenId[tokenId];
-    }
-
-    /**
-     * @notice Sets minting status, takes uint that refers to Status enum (0 indexed).
-     */
-    function setMintingStatus(Status _status) external onlyOwner {
-        mintingStatus = _status;
     }
 
     /**
@@ -170,6 +145,28 @@ contract FFNWearables is ERC1155, Ownable {
         _mint(owner, mintedGlassesSeeds[glasses], 1, "");
         emit WearableMinted(mintedGlassesSeeds[glasses], owner);
 
+    }
+
+    /**
+     * @notice Toggle whether a specific wearable should be open mint.
+     */
+    function toggleOpenMintWearable(uint256 tokenId) external onlyOwner {
+        openMintWearables[tokenId] = !openMintWearables[tokenId];
+    }
+
+    /**
+     * @notice Ban/delete a tokenId. Deletes the design.
+     * @dev The DAO reserves right to ban offensive designs.
+     */
+    function adminBan(uint256 tokenId) external onlyOwner {
+        delete wearableDataByTokenId[tokenId];
+    }
+
+    /**
+     * @notice Sets minting status, takes uint that refers to Status enum (0 indexed).
+     */
+    function setMintingStatus(Status _status) external onlyOwner {
+        mintingStatus = _status;
     }
 
     /**
