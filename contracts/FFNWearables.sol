@@ -237,6 +237,23 @@ contract FFNWearables is ERC1155, Ownable {
     }
 
     /**
+     @notice Let admin burn tokens
+     */
+    function burn(address account, uint256 id, uint256 amount) external onlyOwner {
+        _burn(account, id, amount);
+    }
+
+    /**
+     * @notice Update wearable. In case of errors.
+     */
+    function updateWearable(uint256 tokenId, IOpenWearables.WearableData memory _wearableData)
+        external
+        onlyOwner
+    {
+        wearableDataByTokenId[tokenId] = _wearableData;
+    }
+
+    /**
      * @notice Given a string of interior SVG parts and a background, compose
      * and encode the final SVG.
      */
